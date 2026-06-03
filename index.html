@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOOP - Sistema de Orçamentos Minimalista</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            500: '#6366f1', // Indigo suave / violeta minimalista
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            950: '#1e1b4b',
+                            bgLight: '#f8fafc', // Fundo claro suave
+                            borderLight: '#e2e8f0'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- html2pdf.js para gerar PDF impecável com fotos -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        /* Ajustes de Tema Escuro nativos para elementos customizados */
+        .dark body {
+            background-color: #09090b;
+            color: #f4f4f5;
+        }
+        .dark .bg-white:not(#pdf-template *):not(#pdf-template) {
+            background-color: #18181b !important;
+            color: #f4f4f5;
+        }
+        .dark .border-zinc-200:not(#pdf-template *):not(#pdf-template), 
+        .dark .border-zinc-200\/80:not(#pdf-template *):not(#pdf-template), 
+        .dark .border-zinc-100:not(#pdf-template *):not(#pdf-template) {
+            border-color: #27272a !important;
+        }
+        .dark .bg-zinc-50:not(#pdf-template *):not(#pdf-template) {
+            background-color: #202023 !important;
+        }
+        .dark .bg-zinc-100:not(#pdf-template *):not(#pdf-template) {
+            background-color: #27272a !important;
+        }
+        .dark .text-slate-900:not(#pdf-template *):not(#pdf-template) {
+            color: #ffffff !important;
+        }
+        .dark .text-slate-800:not(#pdf-template *):not(#pdf-template) {
+            color: #e4e4e7 !important;
+        }
+        .dark .text-zinc-400:not(#pdf-template *):not(#pdf-template) {
+            color: #a1a1aa !important;
+        }
+        .dark .text-zinc-500:not(#pdf-template *):not(#pdf-template) {
+            color: #d4d4d8 !important;
+        }
+        
+        /* Custom Scrollbar minimalista */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: #18181b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Transição suave e limpa entre as abas */
+        .tab-pane {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            opacity: 0;
+            transform: translateY(8px);
+            pointer-events: none;
+            position: absolute;
+            width: 100%;
+            top: 0;
+            left: 0;
+        }
+        .tab-pane.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            position: relative;
+        }
+
+        /* Estilo da Folha A4 Perfeita para PDF Comercial */
+        .pdf-a4-page {
+            width: 210mm;
+            height: 295mm; /* Garantir que nunca transborde para uma segunda página */
+            padding: 8mm 15mm 10mm 15mm; /* Margem superior reduzida de 20mm para 8mm para eliminar o espaço vago no topo */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+            background-color: #ffffff;
+            color: #18181b;
+            position: relative;
+            overflow: hidden; /* Impede que qualquer detalhe de pixel quebre o documento em 2 páginas */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Header principal -->
+    <header class="border-b border-zinc-200/80 dark:border-zinc-800 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md sticky top-0 z-50 transition-all">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Logo Minimalista -->
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center">
+                    <i data-lucide="layers" class="w-5 h-5 text-white"></i>
+                </div>
+                <div>
+                    <span class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">LOOP</span>
+                    <span class="text-[9px] text-zinc-400 font-medium uppercase tracking-widest ml-1">Orçamentos</span>
+                </div>
+            </div>
+
+            <!-- Navegação Superior -->
+            <nav class="hidden md:flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg">
+                <button onclick="switchTab('orcamentos')" id="nav-orcamentos" class="nav-btn active flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 text-brand-700 bg-white shadow-sm border border-zinc-200/50 dark:bg-zinc-800 dark:text-brand-300 dark:border-zinc-700">
+                    <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                    Orçador
+                </button>
+                <button onclick="switchTab('produtos')" id="nav-produtos" class="nav-btn flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200">
+                    <i data-lucide="package" class="w-3.5 h-3.5"></i>
+                    Estoque
+                </button>
+                <button onclick="switchTab('cadastro')" id="nav-cadastro" class="nav-btn flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200">
+                    <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                    Novo Item
+                </button>
+                <button onclick="switchTab('configuracoes')" id="nav-configuracoes" class="nav-btn flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold transition-all duration-200 text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200">
+                    <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+                    Configurações
+                </button>
+            </nav>
+
+            <!-- Status de Conexão e Botão Tema -->
+            <div class="flex items-center gap-3">
+                <!-- Seletor de Tema Clarinho / Escuro -->
+                <button onclick="toggleTheme()" class="p-2 rounded-lg bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-850 dark:hover:bg-zinc-800 transition-colors text-zinc-600 dark:text-zinc-300" title="Alternar Tema">
+                    <i data-lucide="moon" id="theme-icon-dark" class="w-4 h-4 hidden"></i>
+                    <i data-lucide="sun" id="theme-icon-light" class="w-4 h-4"></i>
+                </button>
+
+                <div id="connection-status" class="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 px-3 py-1 rounded-full text-[11px] font-medium border border-zinc-200 dark:border-zinc-800">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    Carregando...
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Notificações Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-10 opacity-0 transition-all duration-300 bg-slate-900 border border-zinc-800 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-xs font-medium">
+        <i data-lucide="info" class="w-4 h-4 text-brand-500"></i>
+        <span id="toast-message">Operação executada com sucesso!</span>
+    </div>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 relative">
+        <div class="relative min-h-[550px]">
+
+            <!-- TAB 1: ORÇAMENTADOR -->
+            <div id="tab-orcamentos" class="tab-pane active space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    
+                    <!-- Painel Esquerdo: Busca e Identificação de Cliente -->
+                    <div class="lg:col-span-7 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between space-y-5">
+                        <div class="space-y-4">
+                            <div>
+                                <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                    <i data-lucide="shopping-bag" class="text-brand-500 w-4 h-4"></i>
+                                    Pesquisa de Itens do Estoque
+                                </h2>
+                                <p class="text-xs text-zinc-400">Insira termos ou códigos para filtrar o catálogo ativo.</p>
+                            </div>
+
+                            <!-- Campo de Busca -->
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                    <i data-lucide="search" class="w-4 h-4 text-zinc-400"></i>
+                                </span>
+                                <input type="text" id="search-input" onkeyup="searchProducts()" placeholder="Buscar por código, nome ou categoria..." class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-850 focus:border-brand-500 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-800 dark:text-zinc-200 placeholder-zinc-400 focus:outline-none transition-all">
+                            </div>
+
+                            <!-- Categorias Rápidas -->
+                            <div class="flex flex-wrap gap-1.5" id="category-pills">
+                                <!-- Preenchido via Javascript -->
+                            </div>
+
+                            <!-- Resultados de Pesquisa -->
+                            <div id="search-results" class="space-y-2 max-h-[250px] overflow-y-auto pr-1">
+                                <div class="text-center py-8 text-zinc-400 text-xs">
+                                    Insira termos na barra acima para buscar produtos.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dados do Cliente -->
+                        <div class="border-t border-zinc-100 dark:border-zinc-800 pt-4 space-y-3">
+                            <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider">Identificação do Cliente</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] text-zinc-400 font-semibold mb-1">Nome / Razão Social</label>
+                                    <input type="text" id="client-name" placeholder="Nome Completo" class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-850 focus:border-brand-500 rounded-lg p-2 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] text-zinc-400 font-semibold mb-1">Telefone / E-mail</label>
+                                    <input type="text" id="client-phone" placeholder="(00) 00000-0000" class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-850 focus:border-brand-500 rounded-lg p-2 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Painel Direito: Carrinho de Compra e Fechamento -->
+                    <div class="lg:col-span-5 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between space-y-4">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                    <i data-lucide="receipt" class="text-brand-500 w-4 h-4"></i>
+                                    Itens do Orçamento
+                                </h2>
+                                <span id="cart-count" class="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-[10px] px-2 py-0.5 rounded-full font-bold">0 itens</span>
+                            </div>
+
+                            <!-- Lista do Carrinho -->
+                            <div id="cart-items" class="space-y-3 max-h-[260px] overflow-y-auto pr-1">
+                                <div class="text-center py-10 text-zinc-400 text-xs flex flex-col items-center gap-2">
+                                    <i data-lucide="shopping-cart" class="w-6 h-6 opacity-30 text-zinc-400"></i>
+                                    Nenhum item adicionado ao orçamento.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bloco Financeiro -->
+                        <div class="border-t border-zinc-100 dark:border-zinc-800 pt-4 space-y-3.5">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="text-zinc-400">Subtotal dos Itens</span>
+                                <span id="summary-subtotal" class="font-bold text-slate-800 dark:text-zinc-200">R$ 0,00</span>
+                            </div>
+
+                            <!-- Desconto Comercial -->
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs text-zinc-400">Desconto do Gestor (Global)</span>
+                                    <span id="discount-display" class="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-400 px-1.5 py-0.5 rounded">0%</span>
+                                </div>
+                                <input type="range" id="discount-range" min="0" max="30" value="0" oninput="updateCalculations()" class="w-full accent-brand-600 bg-zinc-200 dark:bg-zinc-800 h-1 rounded-lg cursor-pointer">
+                            </div>
+
+                            <!-- Condição de Pagamento -->
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="setPaymentMethod('a_vista')" id="btn-pay-vista" class="py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center bg-brand-50 border-brand-500 text-brand-700 dark:bg-brand-950/20 dark:border-brand-600 dark:text-brand-300">
+                                    À Vista / PIX
+                                    <span class="block text-[9px] text-zinc-400 dark:text-zinc-500 font-medium">Parcela Única</span>
+                                </button>
+                                <button onclick="setPaymentMethod('parcelado')" id="btn-pay-parcelado" class="py-2 px-3 rounded-lg text-xs font-bold border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-850 transition-all text-center">
+                                    Cartão / Parcelas
+                                    <span class="block text-[9px] text-zinc-400 dark:text-zinc-500 font-medium">Até 12x Sem Juros</span>
+                                </button>
+                            </div>
+
+                            <!-- Opção de Parcelamento -->
+                            <div id="installments-container" class="hidden">
+                                <label class="block text-[10px] text-zinc-400 font-bold uppercase tracking-wider mb-1">Divisão de Parcelas</label>
+                                <select id="installments-select" onchange="updateCalculations()" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-lg p-1.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                    <option value="1">1x Sem Juros</option>
+                                    <option value="2">2x Sem Juros</option>
+                                    <option value="3">3x Sem Juros</option>
+                                    <option value="4">4x Sem Juros</option>
+                                    <option value="6">6x Sem Juros</option>
+                                    <option value="10">10x Sem Juros</option>
+                                    <option value="12">12x Sem Juros</option>
+                                </select>
+                            </div>
+
+                            <!-- Totalização líquida -->
+                            <div class="bg-zinc-50 dark:bg-zinc-850 p-3 rounded-xl flex justify-between items-center border border-zinc-100 dark:border-zinc-800">
+                                <div>
+                                    <span class="text-[9px] text-zinc-400 uppercase tracking-widest font-bold">Total Líquido</span>
+                                    <div id="payment-details-text" class="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">À vista sem bônus</div>
+                                </div>
+                                <span id="summary-total" class="text-xl font-black text-slate-900 dark:text-white">R$ 0,00</span>
+                            </div>
+
+                            <!-- Ação de Exportar -->
+                            <button onclick="generatePDF()" class="w-full bg-brand-600 hover:bg-brand-500 text-white py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                                <i data-lucide="file-down" class="w-4 h-4"></i>
+                                Emitir Proposta Comercial
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: PRODUTOS / ESTOQUE -->
+            <div id="tab-produtos" class="tab-pane space-y-6">
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 p-5 rounded-2xl shadow-sm">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                <i data-lucide="grid" class="text-brand-500 w-4 h-4"></i>
+                                Estoque Consolidado
+                            </h2>
+                            <p class="text-xs text-zinc-400">Verifique os níveis de estoque e precificação por unidades físicas.</p>
+                        </div>
+                        <button onclick="syncData()" class="bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-750 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 self-start sm:self-auto">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="sync-icon"></i>
+                            Forçar Sincronismo
+                        </button>
+                    </div>
+
+                    <!-- Grid de Cartões/Tabela de Estoque -->
+                    <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+                        <table class="w-full text-left border-collapse min-w-[600px]">
+                            <thead>
+                                <tr class="bg-zinc-50 dark:bg-zinc-850 border-b border-zinc-200 dark:border-zinc-800 text-[10px] text-zinc-400 uppercase font-bold tracking-wider">
+                                    <th class="py-3 px-4">Foto</th>
+                                    <th class="py-3 px-4">Código</th>
+                                    <th class="py-3 px-4">Produto</th>
+                                    <th class="py-3 px-4">Categoria</th>
+                                    <th class="py-3 px-4">Preço Base</th>
+                                    <th class="py-3 px-4 text-center">Medida</th>
+                                    <th class="py-3 px-4">Estoque</th>
+                                    <th class="py-3 px-4 text-right">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stock-table-body" class="divide-y divide-zinc-100 dark:divide-zinc-800 text-xs text-slate-700 dark:text-zinc-300">
+                                <!-- Dinâmico via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: CADASTRO DE NOVO ITEM -->
+            <div id="tab-cadastro" class="tab-pane space-y-6">
+                <div class="max-w-3xl mx-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm">
+                    <div class="mb-5">
+                        <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <i data-lucide="plus-circle" class="text-brand-500 w-4 h-4"></i>
+                            Entrada de Novo Produto
+                        </h2>
+                        <p class="text-xs text-zinc-400">Insira as informações técnicas para incorporação imediata na planilha integrada.</p>
+                    </div>
+
+                    <form id="product-form" onsubmit="handleProductSubmit(event)" class="space-y-5">
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+                            <!-- Campos Textuais (Esquerda) -->
+                            <div class="md:col-span-7 space-y-3.5">
+                                <div class="grid grid-cols-3 gap-3">
+                                    <div class="col-span-2">
+                                        <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Cód. Registro</label>
+                                        <input type="text" id="new-prod-code" required placeholder="L-900" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Unidade</label>
+                                        <select id="new-prod-unit" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                            <option value="un">Unidade</option>
+                                            <option value="kg">Quilo (kg)</option>
+                                            <option value="L">Litro (L)</option>
+                                            <option value="m">Metro (m)</option>
+                                            <option value="m²">M. Quadrado (m²)</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Nome do Item</label>
+                                    <input type="text" id="new-prod-name" required placeholder="Ex: Tecido Oxford Azul" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Preço Un. / Medida (R$)</label>
+                                        <input type="number" step="0.01" id="new-prod-price" required placeholder="0.00" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Disponibilidade Inicial</label>
+                                        <input type="number" step="0.01" id="new-prod-stock" required placeholder="10.0" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Categoria Comercial</label>
+                                    <input type="text" id="new-prod-category" placeholder="Ex: Tecidos" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                </div>
+                            </div>
+
+                            <!-- Fotos & Mídias (Direita) -->
+                            <div class="md:col-span-5 flex flex-col justify-between">
+                                <div>
+                                    <span class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1.5">Fotografia de Referência</span>
+                                    <div class="relative bg-zinc-50 dark:bg-zinc-850 border-2 border-dashed border-zinc-200 dark:border-zinc-750 hover:border-brand-500 rounded-xl overflow-hidden h-52 flex flex-col items-center justify-center transition-all">
+                                        <!-- Video Stream de Câmera -->
+                                        <video id="camera-stream" class="hidden absolute inset-0 w-full h-full object-cover"></video>
+                                        <!-- Preview final -->
+                                        <img id="photo-preview" class="hidden absolute inset-0 w-full h-full object-cover">
+                                        
+                                        <div id="media-placeholder" class="text-center p-4 space-y-2">
+                                            <i data-lucide="image-plus" class="w-6 h-6 text-zinc-400 mx-auto"></i>
+                                            <p class="text-[10px] text-zinc-400 font-medium">Capture a foto real do item</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Botões para Foto -->
+                                <div class="grid grid-cols-2 gap-2 mt-3">
+                                    <button type="button" id="btn-toggle-camera" onclick="startCamera()" class="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200/80 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 p-2 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 border border-zinc-200 dark:border-zinc-700">
+                                        <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                                        Ligar Câmera
+                                    </button>
+                                    <button type="button" id="btn-capture" onclick="takeSnapshot()" class="hidden bg-brand-600 hover:bg-brand-500 text-white p-2 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1.5">
+                                        <i data-lucide="aperture" class="w-3.5 h-3.5"></i>
+                                        Tirar Foto
+                                    </button>
+                                    <input type="file" id="file-upload" accept="image/*" onchange="loadLocalImage(event)" class="hidden">
+                                    <button type="button" id="btn-upload-trigger" onclick="document.getElementById('file-upload').click()" class="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200/80 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 p-2 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 border border-zinc-200 dark:border-zinc-700">
+                                        <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+                                        Subir Foto
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botão Principal -->
+                        <div class="pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                            <button type="submit" id="btn-submit-product" class="w-full bg-brand-600 hover:bg-brand-500 text-white py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5">
+                                <i data-lucide="save" class="w-4 h-4"></i>
+                                Concluir Cadastro de Produto
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- TAB 4: CONFIGURAÇÕES -->
+            <div id="tab-configuracoes" class="tab-pane space-y-6">
+                <div class="max-w-xl mx-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm space-y-5">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <i data-lucide="settings" class="text-brand-500"></i>
+                            Conexão e Identidade
+                        </h2>
+                        <p class="text-xs text-zinc-400">Configure as chaves e caminhos para sincronização automática com o Google Drive e Planilhas.</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <!-- Customização de Cabeçalho do PDF -->
+                        <div class="p-4 bg-zinc-50 dark:bg-zinc-850 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-3">
+                            <h3 class="text-xs font-bold text-zinc-500 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                                <i data-lucide="layout-template" class="w-3.5 h-3.5 text-brand-500"></i>
+                                Identidade do PDF de Orçamento
+                            </h3>
+                            <div>
+                                <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Nome da Empresa (Título Principal)</label>
+                                <input type="text" id="config-company-name" placeholder="Ex: LOOP ORÇAMENTOS" class="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:border-brand-500 rounded-lg p-2 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Slogan ou Subtítulo Comercial</label>
+                                <input type="text" id="config-company-slogan" placeholder="Ex: SOLUÇÕES COMERCIAIS INTEGRADAS E SOB MEDIDA" class="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:border-brand-500 rounded-lg p-2 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-wide">URL da API Google Apps Script</label>
+                            <input type="text" id="config-script-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-zinc-50 border border-zinc-200 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 focus:outline-none transition-all dark:bg-zinc-800 dark:border-zinc-700">
+                            <span class="text-[9px] text-zinc-400 mt-1 block">Insira o URL de implantação gerada no editor do Apps Script da planilha.</span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-wide">ID da Pasta no Google Drive (Fotos)</label>
+                            <input type="text" id="config-folder-id" placeholder="ID exclusivo da pasta de imagens" class="w-full bg-zinc-50 border border-zinc-200 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 focus:outline-none transition-all dark:bg-zinc-800 dark:border-zinc-700">
+                            <span class="text-[9px] text-zinc-400 mt-1 block">As fotos de novos cadastros serão armazenadas diretamente no seu Google Drive pessoal.</span>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-500 mb-1.5 uppercase tracking-wide">Logotipo Corporativo (Opcional - Exibe no PDF)</label>
+                            <div class="flex items-center gap-3">
+                                <div class="w-14 h-14 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
+                                    <img id="logo-preview" src="https://placehold.co/100x100/f1f5f9/94a3b8?text=LOGO" class="w-full h-full object-contain">
+                                </div>
+                                <div class="flex-grow">
+                                    <input type="file" id="logo-upload" accept="image/*" onchange="loadCompanyLogo(event)" class="hidden">
+                                    <button type="button" onclick="document.getElementById('logo-upload').click()" class="bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5">
+                                        <i data-lucide="image-plus" class="w-3.5 h-3.5"></i>
+                                        Importar Logo
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button onclick="saveConfigurations()" class="w-full bg-brand-600 hover:bg-brand-500 text-white py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1">
+                            <i data-lucide="check" class="w-4 h-4"></i>
+                            Confirmar Parâmetros
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MODAL DE EDIÇÃO DE DADOS DO PRODUTO (RÁPIDO) -->
+    <div id="edit-product-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] hidden">
+        <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl max-w-md w-full mx-4 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <i data-lucide="edit" class="text-brand-500 w-4 h-4"></i>
+                    Ajustar Dados do Produto
+                </h3>
+                <button onclick="closeEditModal()" class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            
+            <form id="edit-product-form" onsubmit="handleProductEditSubmit(event)" class="space-y-4">
+                <input type="hidden" id="edit-prod-code">
+                
+                <div>
+                    <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Código do Item</label>
+                    <div id="edit-prod-code-display" class="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-770 rounded-lg p-2.5 text-xs text-zinc-500 dark:text-zinc-400 font-mono font-bold">
+                        -
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Nome do Produto</label>
+                    <input type="text" id="edit-prod-name" required class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-750 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Preço Base (R$)</label>
+                        <input type="number" step="0.01" id="edit-prod-price" required class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-750 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Estoque Físico</label>
+                        <input type="number" step="0.01" id="edit-prod-stock" required class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-750 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Categoria Comercial</label>
+                        <input type="text" id="edit-prod-category" class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-750 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Unidade</label>
+                        <select id="edit-prod-unit" class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-750 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
+                            <option value="un">Unidade</option>
+                            <option value="kg">Quilo (kg)</option>
+                            <option value="L">Litro (L)</option>
+                            <option value="m">Metro (m)</option>
+                            <option value="m²">M. Quadrado (m²)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-2">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-xl text-xs font-bold transition-all">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btn-save-edit" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                        Confirmar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TEMPLATE DO PDF (Escondido e ajustado para Folha A4 de Alta Definição) -->
+    <div id="pdf-template" class="hidden">
+        <div class="pdf-a4-page mx-auto">
+            
+            <!-- Bloco Superior: Cabeçalho -->
+            <div>
+                <div class="flex justify-between items-start border-b-2 border-brand-600 pb-5 mb-5">
+                    <div class="flex items-center gap-3">
+                        <img id="pdf-logo-img" src="" class="h-12 w-auto max-w-[120px] object-contain hidden">
+                        <div>
+                            <h1 class="text-2xl font-black tracking-tight text-slate-900 uppercase" id="pdf-company-title">LOOP ORÇAMENTOS</h1>
+                            <p class="text-[10px] text-zinc-400 font-semibold tracking-wider" id="pdf-company-slogan">SOLUÇÕES COMERCIAIS INTEGRADAS E SOB MEDIDA</p>
+                        </div>
+                    </div>
+                    <div class="text-right text-xs">
+                        <p class="font-bold text-brand-600" id="pdf-doc-date">Data: 00/00/0000</p>
+                        <p class="text-[10px] text-zinc-500 font-bold" id="pdf-doc-id">Nº DOC: #000000</p>
+                    </div>
+                </div>
+
+                <!-- Identificação do Cliente -->
+                <div class="bg-zinc-50 border border-zinc-200 p-4 rounded-xl mb-5">
+                    <h3 class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Dados do Cliente</h3>
+                    <div class="grid grid-cols-2 gap-4 text-xs text-slate-800">
+                        <div>
+                            <span class="text-zinc-400 block text-[9px] uppercase font-semibold">Cliente / Empresa:</span>
+                            <strong id="pdf-client-name" class="text-sm">-</strong>
+                        </div>
+                        <div>
+                            <span class="text-zinc-400 block text-[9px] uppercase font-semibold">Contato Telefônico:</span>
+                            <strong id="pdf-client-phone" class="text-sm">-</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabela de Itens (Centralizada e Elegante) -->
+                <table class="w-full text-left border-collapse mb-5">
+                    <thead>
+                        <tr class="border-b border-zinc-200 text-[10px] text-zinc-400 uppercase font-bold">
+                            <th class="py-2 px-1">Cód</th>
+                            <th class="py-2 px-1">Produto</th>
+                            <th class="py-2 px-1 text-center">Foto</th>
+                            <th class="py-2 px-1 text-center">Medida</th>
+                            <th class="py-2 px-1 text-right">Qtd</th>
+                            <th class="py-2 px-1 text-right">Preço Un.</th>
+                            <th class="py-2 px-1 text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pdf-items-body" class="divide-y divide-zinc-100 text-xs text-slate-800">
+                        <!-- Itens Dinâmicos -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Bloco Inferior: Spacer, Observações, Valores e Assinatura -->
+            <div class="space-y-6">
+                <!-- Seção Comercial de Termos e Observações -->
+                <div class="grid grid-cols-12 gap-4 border-t border-zinc-200 pt-5">
+                    <div class="col-span-7 bg-zinc-50 p-4 rounded-xl text-[10px] text-zinc-500 space-y-1.5 leading-relaxed">
+                        <span class="block text-[9px] font-bold text-zinc-400 uppercase tracking-wide">Observações Importantes</span>
+                        <p>1. O estoque de produtos fracionados ou sob encomenda pode oscilar diariamente.</p>
+                        <p>2. Condições de pagamento acordadas conforme modalidade escolhida no fechamento.</p>
+                        <p>3. Prazo de validade desta proposta comercial: <strong>5 (cinco) dias corridos</strong>.</p>
+                    </div>
+
+                    <!-- Resumo Financeiro Alinhado à Direita -->
+                    <div class="col-span-5 space-y-1.5 text-right text-xs">
+                        <div class="flex justify-between">
+                            <span class="text-zinc-400">Subtotal Geral:</span>
+                            <span id="pdf-subtotal" class="font-semibold text-slate-800">R$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between text-emerald-600">
+                            <span>Desconto Gestor:</span>
+                            <span id="pdf-discount" class="font-bold">0%</span>
+                        </div>
+                        <div class="flex justify-between border-t border-zinc-200 pt-2 text-sm font-bold">
+                            <span class="text-slate-900">Total Líquido:</span>
+                            <span id="pdf-total" class="text-brand-600 text-base">R$ 0,00</span>
+                        </div>
+                        <p class="text-[9px] text-zinc-500 font-bold bg-brand-50 text-brand-700 px-2.5 py-1 rounded inline-block mt-1" id="pdf-payment-type">-</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-8 pt-8 text-center text-[10px] text-zinc-400">
+                    <div class="space-y-1">
+                        <div class="border-t border-zinc-300 w-4/5 mx-auto"></div>
+                        <p class="font-bold text-slate-800 text-xs" id="pdf-signature-client-label">Assinatura do Cliente</p>
+                        <p id="pdf-signature-client-desc">Aceito os termos e as condições acima</p>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="border-t border-zinc-300 w-4/5 mx-auto"></div>
+                        <p class="font-bold text-slate-800 text-xs" id="pdf-signature-seller-label">Representante de Vendas</p>
+                        <p id="pdf-signature-seller-desc">LOOP - Sistema Unificado</p>
+                    </div>
+                </div>
+
+                <!-- Rodapé da Folha A4 -->
+                <div class="text-center text-[9px] text-zinc-400 border-t border-zinc-100 pt-3">
+                    <p>Documento gerado eletronicamente. LOOP Orçamentos S.A. | Obrigado pela preferência!</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Rodapé -->
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 py-4 text-center text-xs text-zinc-400">
+        <p>© 2026 LOOP. Design Minimalista e Inteligência Comercial Aplicada.</p>
+    </footer>
+
+    <script>
+        // Banco de Dados em Memória / Fallbacks (Unidades de Medida inclusas: un, kg, L, m, m²)
+        let localProducts = [
+            { code: "L-201", name: "Tecido Linho Fino", price: 42.50, stock: 120, category: "Matéria-prima", unit: "m", image: "https://images.unsplash.com/photo-1544816155-12df9643f363?w=200" },
+            { code: "L-202", name: "Cabo de Aço Inox (M)", price: 18.90, stock: 350.5, category: "Fios", unit: "m", image: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=200" },
+            { code: "L-203", name: "Resina Sintética Premium", price: 89.90, stock: 45, category: "Químicos", unit: "L", image: "https://images.unsplash.com/photo-1532187863486-abf9d39d66e8?w=200" },
+            { code: "L-204", name: "Cimento Secagem Rápida", price: 34.00, stock: 80, category: "Construção", unit: "kg", image: "https://images.unsplash.com/photo-1590069261209-f8e9b8642343?w=200" },
+            { code: "L-205", name: "Parafuso Sextavado 3/4", price: 1.25, stock: 1500, category: "Fixadores", unit: "un", image: "https://images.unsplash.com/photo-1586864387967-d02ef85d93e8?w=200" }
+        ];
+
+        let cart = [];
+        let currentPaymentMethod = 'a_vista';
+        let base64ImageToUpload = "";
+        let base64Logo = "";
+        let currentTheme = 'light';
+
+        // Inicialização
+        window.onload = function() {
+            lucide.createIcons();
+            initTheme();
+            loadConfigurations();
+            syncData();
+            updateCalculations();
+        };
+
+        // Inicialização e gerenciamento do Tema Escuro
+        function initTheme() {
+            const savedTheme = localStorage.getItem('loop_theme') || 'light';
+            setTheme(savedTheme);
+        }
+
+        function toggleTheme() {
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            setTheme(newTheme);
+        }
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            localStorage.setItem('loop_theme', theme);
+            
+            const htmlEl = document.documentElement;
+            const darkIcon = document.getElementById('theme-icon-dark');
+            const lightIcon = document.getElementById('theme-icon-light');
+
+            if (theme === 'dark') {
+                htmlEl.classList.add('dark');
+                if (darkIcon) darkIcon.classList.remove('hidden');
+                if (lightIcon) lightIcon.classList.add('hidden');
+            } else {
+                htmlEl.classList.remove('dark');
+                if (darkIcon) darkIcon.classList.add('hidden');
+                if (lightIcon) lightIcon.classList.remove('hidden');
+            }
+        }
+
+        function switchTab(tabId) {
+            // Alterna o estilo visual dos botões
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active', 'text-brand-700', 'bg-white', 'shadow-sm', 'border', 'border-zinc-200/50', 'dark:bg-zinc-800', 'dark:text-brand-300', 'dark:border-zinc-700');
+                btn.classList.add('text-zinc-500', 'dark:text-zinc-400');
+            });
+
+            const targetNav = document.getElementById(`nav-${tabId}`);
+            if (targetNav) {
+                targetNav.classList.add('active', 'text-brand-700', 'bg-white', 'shadow-sm', 'border', 'border-zinc-200/50', 'dark:bg-zinc-800', 'dark:text-brand-300', 'dark:border-zinc-700');
+                targetNav.classList.remove('text-zinc-500', 'dark:text-zinc-400');
+            }
+
+            // Alterna a aba com transição simples de opacidade
+            const panes = document.querySelectorAll('.tab-pane');
+            panes.forEach(pane => {
+                pane.classList.remove('active');
+            });
+
+            const targetPane = document.getElementById(`tab-${tabId}`);
+            if (targetPane) {
+                targetPane.classList.add('active');
+            }
+
+            // Se sair da aba de cadastro, encerra o stream da câmera
+            if (tabId !== 'cadastro') {
+                stopCamera();
+            }
+        }
+
+        // Mostrar Toast de Notificação
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast-message');
+            msgEl.innerText = message;
+            toast.classList.remove('translate-y-10', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+            }, 3000);
+        }
+
+        // Configurações do LocalStorage
+        function loadConfigurations() {
+            const scriptUrl = localStorage.getItem('loop_script_url') || "";
+            const folderId = localStorage.getItem('loop_folder_id') || "";
+            base64Logo = localStorage.getItem('loop_logo_base64') || "";
+
+            // Customizações do PDF
+            const companyName = localStorage.getItem('loop_pdf_company_name') || "LOOP ORÇAMENTOS";
+            const companySlogan = localStorage.getItem('loop_pdf_company_slogan') || "SOLUÇÕES COMERCIAIS INTEGRADAS E SOB MEDIDA";
+
+            document.getElementById('config-script-url').value = scriptUrl;
+            document.getElementById('config-folder-id').value = folderId;
+            document.getElementById('config-company-name').value = companyName;
+            document.getElementById('config-company-slogan').value = companySlogan;
+
+            if (base64Logo) {
+                document.getElementById('logo-preview').src = base64Logo;
+            }
+        }
+
+        function saveConfigurations() {
+            const scriptUrl = document.getElementById('config-script-url').value.trim();
+            const folderId = document.getElementById('config-folder-id').value.trim();
+            const companyName = document.getElementById('config-company-name').value.trim() || "LOOP ORÇAMENTOS";
+            const companySlogan = document.getElementById('config-company-slogan').value.trim() || "SOLUÇÕES COMERCIAIS INTEGRADAS E SOB MEDIDA";
+
+            localStorage.setItem('loop_script_url', scriptUrl);
+            localStorage.setItem('loop_folder_id', folderId);
+            localStorage.setItem('loop_pdf_company_name', companyName);
+            localStorage.setItem('loop_pdf_company_slogan', companySlogan);
+
+            showToast("Configurações atualizadas!");
+            syncData();
+        }
+
+        function loadCompanyLogo(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                base64Logo = e.target.result;
+                localStorage.setItem('loop_logo_base64', base64Logo);
+                document.getElementById('logo-preview').src = base64Logo;
+                showToast("Logotipo corporativo carregado!");
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Sincronizar dados com o Google Apps Script
+        async function syncData() {
+            const scriptUrl = localStorage.getItem('loop_script_url');
+            const syncIcon = document.getElementById('sync-icon');
+            const statusBadge = document.getElementById('connection-status');
+
+            if (syncIcon) syncIcon.classList.add('animate-spin');
+
+            if (!scriptUrl) {
+                statusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Modo Local`;
+                statusBadge.className = "flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-full text-[11px] font-medium border border-amber-200/50 dark:border-amber-900/30";
+                renderStockTable(localProducts);
+                renderCategoryPills(localProducts);
+                if (syncIcon) syncIcon.classList.remove('animate-spin');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${scriptUrl}?action=read`);
+                const res = await response.json();
+
+                if (res.status === "success") {
+                    localProducts = res.data;
+                    renderStockTable(localProducts);
+                    renderCategoryPills(localProducts);
+                    showToast("Base de dados sincronizada com sucesso!");
+
+                    statusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Sincronizado`;
+                    statusBadge.className = "flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 px-3 py-1 rounded-full text-[11px] font-medium border border-emerald-200/50 dark:border-emerald-900/30";
+                }
+            } catch (err) {
+                console.error("Falha na sincronização:", err);
+                showToast("Falha de conexão. Executando em modo local.");
+                renderStockTable(localProducts);
+                renderCategoryPills(localProducts);
+            } finally {
+                if (syncIcon) syncIcon.classList.remove('animate-spin');
+            }
+        }
+
+        // Renderizar Produtos no Estoque (Aba Estoque)
+        function renderStockTable(products) {
+            const tbody = document.getElementById('stock-table-body');
+            tbody.innerHTML = "";
+
+            if (products.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-10 text-zinc-400 text-xs">Nenhum produto cadastrado no momento.</td></tr>`;
+                return;
+            }
+
+            products.forEach(item => {
+                const tr = document.createElement('tr');
+                const unit = item.unit || 'un';
+                tr.className = "hover:bg-zinc-50/50 dark:hover:bg-zinc-850/40 transition-colors";
+                tr.innerHTML = `
+                    <td class="py-3 px-4">
+                        <div class="w-16 h-16 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center shadow-sm">
+                            <img src="${item.image || 'https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'}" onerror="this.src='https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'" class="w-full h-full object-cover">
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 font-mono font-bold text-brand-600">${item.code}</td>
+                    <td class="py-3 px-4 font-bold text-slate-800 dark:text-zinc-100">${item.name}</td>
+                    <td class="py-3 px-4 text-zinc-400 font-medium">${item.category || "Geral"}</td>
+                    <td class="py-3 px-4 font-bold text-slate-900 dark:text-zinc-200">R$ ${parseFloat(item.price).toFixed(2)}</td>
+                    <td class="py-3 px-4 text-center"><span class="bg-zinc-100 text-zinc-600 text-[10px] px-2 py-0.5 rounded uppercase font-bold dark:bg-zinc-800 dark:text-zinc-300">${unit}</span></td>
+                    <td class="py-3 px-4 font-semibold text-zinc-500 dark:text-zinc-400">${item.stock} <span class="text-[10px] uppercase">${unit}</span></td>
+                    <td class="py-3 px-4 text-right">
+                        <div class="inline-flex items-center gap-1.5">
+                            <button onclick="openEditModal('${item.code}')" class="text-zinc-400 hover:text-brand-600 p-1.5 transition-colors" title="Ajustar Produto">
+                                <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button onclick="addToCart('${item.code}')" class="bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/25 dark:hover:bg-brand-900/30 text-brand-700 dark:text-brand-400 px-3 py-1.5 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1 border border-brand-200/50 dark:border-brand-900/40">
+                                <i data-lucide="plus" class="w-3 h-3"></i> Adicionar
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        // Renderizar Filtros por Categorias Rápidas
+        function renderCategoryPills(products) {
+            const pillContainer = document.getElementById('category-pills');
+            pillContainer.innerHTML = "";
+
+            const categories = ["Todos", ...new Set(products.map(item => item.category || "Geral"))];
+
+            categories.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.className = "bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200/80 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-400 px-3 py-1 rounded-full text-[10px] font-bold transition-all uppercase tracking-wide";
+                btn.innerText = cat;
+                btn.onclick = () => filterByCategory(cat);
+                pillContainer.appendChild(btn);
+            });
+        }
+
+        function filterByCategory(category) {
+            const input = document.getElementById('search-input');
+            if (category === "Todos") {
+                input.value = "";
+            } else {
+                input.value = category;
+            }
+            searchProducts();
+        }
+
+        // Pesquisa de Produtos no Orçador
+        function searchProducts() {
+            const query = document.getElementById('search-input').value.toLowerCase().trim();
+            const results = document.getElementById('search-results');
+
+            if (!query) {
+                results.innerHTML = `<div class="text-center py-8 text-zinc-400 text-xs">Insira termos na barra acima para buscar produtos.</div>`;
+                return;
+            }
+
+            const filtered = localProducts.filter(item => 
+                item.name.toLowerCase().includes(query) || 
+                item.code.toLowerCase().includes(query) ||
+                (item.category && item.category.toLowerCase().includes(query))
+            );
+
+            if (filtered.length === 0) {
+                results.innerHTML = `<div class="text-center py-8 text-zinc-400 text-xs">Nenhum item localizado para sua busca comercial.</div>`;
+                return;
+            }
+
+            results.innerHTML = "";
+            filtered.forEach(item => {
+                const unit = item.unit || 'un';
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-2.5 bg-zinc-50 dark:bg-zinc-850/50 border border-zinc-200/80 dark:border-zinc-800 rounded-xl hover:border-brand-500/50 transition-all";
+                div.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-16 h-16 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shadow-sm">
+                            <img src="${item.image || 'https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'}" onerror="this.src='https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'" class="w-full h-full object-cover">
+                        </div>
+                        <div>
+                            <span class="block text-[10px] font-mono font-bold text-brand-600">${item.code}</span>
+                            <span class="block text-xs font-bold text-slate-800 dark:text-zinc-200 truncate max-w-[180px]">${item.name}</span>
+                            <span class="text-[9px] font-semibold text-zinc-400 uppercase bg-zinc-200/50 dark:bg-zinc-800/80 px-1 py-0.2 rounded">${unit}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-extrabold text-xs text-slate-900 dark:text-white mr-2">R$ ${parseFloat(item.price).toFixed(2)}</span>
+                        <button onclick="openEditModal('${item.code}')" class="text-zinc-400 hover:text-brand-600 p-1.5 rounded-lg transition-all" title="Ajustar Produto">
+                            <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button onclick="addToCart('${item.code}')" class="bg-brand-600 hover:bg-brand-500 text-white p-1.5 rounded-lg transition-all shadow-sm">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                `;
+                results.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        // LÓGICA DE EDIÇÃO RÁPIDA DE DADOS DO PRODUTO (MODAL)
+        function openEditModal(code) {
+            const product = localProducts.find(p => p.code === code);
+            if (!product) return;
+
+            document.getElementById('edit-prod-code').value = product.code;
+            document.getElementById('edit-prod-code-display').innerText = product.code;
+            document.getElementById('edit-prod-name').value = product.name;
+            document.getElementById('edit-prod-price').value = product.price;
+            document.getElementById('edit-prod-stock').value = product.stock;
+            document.getElementById('edit-prod-category').value = product.category || "";
+            document.getElementById('edit-prod-unit').value = product.unit || "un";
+
+            const modal = document.getElementById('edit-product-modal');
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('edit-product-modal');
+            modal.classList.add('hidden');
+        }
+
+        async function handleProductEditSubmit(event) {
+            event.preventDefault();
+
+            const code = document.getElementById('edit-prod-code').value;
+            const name = document.getElementById('edit-prod-name').value.trim();
+            const price = parseFloat(document.getElementById('edit-prod-price').value);
+            const stock = parseFloat(document.getElementById('edit-prod-stock').value);
+            const category = document.getElementById('edit-prod-category').value.trim() || "Geral";
+            const unit = document.getElementById('edit-prod-unit').value;
+
+            // Atualiza localmente no catálogo
+            const prodIndex = localProducts.findIndex(p => p.code === code);
+            if (prodIndex !== -1) {
+                localProducts[prodIndex].name = name;
+                localProducts[prodIndex].price = price;
+                localProducts[prodIndex].stock = stock;
+                localProducts[prodIndex].category = category;
+                localProducts[prodIndex].unit = unit;
+
+                // Também atualiza dados no carrinho, se o item estiver adicionado nele
+                const cartIndex = cart.findIndex(item => item.code === code);
+                if (cartIndex !== -1) {
+                    cart[cartIndex].name = name;
+                    cart[cartIndex].price = price;
+                    cart[cartIndex].unit = unit;
+                }
+            }
+
+            const scriptUrl = localStorage.getItem('loop_script_url');
+            const btnSave = document.getElementById('btn-save-edit');
+
+            btnSave.disabled = true;
+            btnSave.innerHTML = `<i data-lucide="refresh-cw" class="w-3.5 h-3.5 animate-spin"></i> Atualizando Planilha...`;
+            lucide.createIcons();
+
+            if (!scriptUrl) {
+                // Executa a finalização apenas localmente
+                finalizeEditView();
+                showToast("Dados do produto corrigidos!");
+                return;
+            }
+
+            try {
+                const apiBody = {
+                    action: "update",
+                    code: code,
+                    name: name,
+                    price: price,
+                    stock: stock,
+                    category: category,
+                    unit: unit
+                };
+
+                await fetch(scriptUrl, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(apiBody)
+                });
+
+                showToast("Produto updated na Planilha Google!");
+                finalizeEditView();
+
+                // Dá um refresh no estoque em segundo plano
+                setTimeout(() => {
+                    syncData();
+                }, 1500);
+
+            } catch (err) {
+                console.error("Erro na sincronia da edição:", err);
+                showToast("Não foi possível conectar com a API. Alterações salvas localmente.");
+                finalizeEditView();
+            }
+        }
+
+        function finalizeEditView() {
+            const btnSave = document.getElementById('btn-save-edit');
+            btnSave.disabled = false;
+            btnSave.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5"></i> Confirmar Alterações`;
+            closeEditModal();
+            updateCalculations();
+            renderStockTable(localProducts);
+            searchProducts();
+            renderCategoryPills(localProducts);
+        }
+
+        // Gerenciamento de itens no carrinho de orçamento
+        function addToCart(code) {
+            const product = localProducts.find(p => p.code === code);
+            if (!product) return;
+
+            const existing = cart.find(item => item.code === code);
+            const unit = product.unit || 'un';
+
+            // Incrementar respeitando tipo de medida (fracionado ou inteiro)
+            const step = (unit === 'un') ? 1 : 0.5;
+
+            if (existing) {
+                existing.quantity = parseFloat((existing.quantity + step).toFixed(2));
+            } else {
+                // Ao criar um novo item no carrinho, inicializa com desconto unitário de 0%
+                cart.push({ ...product, quantity: step, discount: 0 });
+            }
+
+            updateCalculations();
+            showToast(`${product.name} adicionado!`);
+        }
+
+        function removeCartItem(code) {
+            cart = cart.filter(item => item.code !== code);
+            updateCalculations();
+            showToast("Item removido da lista.");
+        }
+
+        function updateCartQty(code, val) {
+            const item = cart.find(p => p.code === code);
+            if (!item) return;
+
+            const numericVal = parseFloat(val);
+            if (isNaN(numericVal) || numericVal <= 0) {
+                cart = cart.filter(p => p.code !== code);
+            } else {
+                item.quantity = numericVal;
+            }
+            updateCalculations();
+        }
+
+        // Nova função para atualizar o desconto direto no produto do carrinho
+        function updateItemDiscount(code, val) {
+            const item = cart.find(p => p.code === code);
+            if (!item) return;
+
+            let discountVal = parseFloat(val);
+            if (isNaN(discountVal) || discountVal < 0) {
+                discountVal = 0;
+            } else if (discountVal > 100) {
+                discountVal = 100; // Limite de 100% de desconto
+            }
+
+            item.discount = parseFloat(discountVal.toFixed(2));
+            updateCalculations();
+        }
+
+        function setPaymentMethod(method) {
+            currentPaymentMethod = method;
+            const btnVista = document.getElementById('btn-pay-vista');
+            const btnParcelado = document.getElementById('btn-pay-parcelado');
+            const instContainer = document.getElementById('installments-container');
+
+            if (method === 'a_vista') {
+                btnVista.className = "py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center bg-brand-50 border-brand-500 text-brand-700 dark:bg-brand-950/20 dark:border-brand-600 dark:text-brand-300";
+                btnParcelado.className = "py-2 px-3 rounded-lg text-xs font-bold border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-850 transition-all text-center";
+                instContainer.classList.add('hidden');
+            } else {
+                btnParcelado.className = "py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center bg-brand-50 border-brand-500 text-brand-700 dark:bg-brand-950/20 dark:border-brand-600 dark:text-brand-300";
+                btnVista.className = "py-2 px-3 rounded-lg text-xs font-bold border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-850 transition-all text-center";
+                instContainer.classList.remove('hidden');
+            }
+            updateCalculations();
+        }
+
+        // Recalcular finanças do orçamento (Com desconto por item + desconto global)
+        function updateCalculations() {
+            const cartContainer = document.getElementById('cart-items');
+            const cartCount = document.getElementById('cart-count');
+
+            if (cart.length === 0) {
+                cartContainer.innerHTML = `
+                    <div class="text-center py-10 text-zinc-400 text-xs flex flex-col items-center gap-2">
+                        <i data-lucide="shopping-cart" class="w-6 h-6 opacity-30 text-zinc-400"></i>
+                        Nenhum item adicionado ao orçamento.
+                    </div>
+                `;
+                cartCount.innerText = "0 itens";
+                document.getElementById('summary-subtotal').innerText = "R$ 0,00";
+                document.getElementById('summary-total').innerText = "R$ 0,00";
+                lucide.createIcons();
+                return;
+            }
+
+            cartCount.innerText = `${cart.length} item(ns)`;
+            cartContainer.innerHTML = "";
+
+            let subtotal = 0;
+
+            cart.forEach(item => {
+                const itemDiscount = item.discount || 0;
+                const finalUnitPrice = item.price * (1 - itemDiscount / 100);
+                const totalItem = finalUnitPrice * item.quantity;
+                subtotal += totalItem;
+                const unit = item.unit || 'un';
+
+                // Input de quantidade com suporte para floats dependendo da unidade de medida
+                const inputStep = (unit === 'un') ? '1' : '0.1';
+
+                const div = document.createElement('div');
+                div.className = "flex flex-col p-3 bg-zinc-50 dark:bg-zinc-850 border border-zinc-100 dark:border-zinc-800 rounded-xl space-y-2";
+                div.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-14 h-14 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shadow-sm shrink-0">
+                                <img src="${item.image || 'https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'}" onerror="this.src='https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'" class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <span class="block text-xs font-bold text-slate-800 dark:text-zinc-200 truncate max-w-[130px]">${item.name}</span>
+                                <span class="block text-[10px] text-zinc-400 font-semibold">
+                                    R$ ${parseFloat(item.price).toFixed(2)} / ${unit}
+                                    ${itemDiscount > 0 ? `<span class="text-emerald-600 dark:text-emerald-400 ml-1">(-${itemDiscount}%)</span>` : ''}
+                                </span>
+                            </div>
+                        </div>
+                        <button onclick="removeCartItem('${item.code}')" class="text-zinc-400 hover:text-rose-600 p-1 transition-colors self-start">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between gap-3 pt-1 border-t border-zinc-100/50 dark:border-zinc-800/50">
+                        <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-1">
+                                <span class="text-[9px] text-zinc-400 font-bold uppercase">Qtd:</span>
+                                <input type="number" step="${inputStep}" min="0.1" value="${item.quantity}" onchange="updateCartQty('${item.code}', this.value)" class="w-12 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded p-0.5 text-center text-xs font-bold text-slate-800 dark:text-zinc-200 focus:outline-none">
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-[9px] text-zinc-400 font-bold uppercase">Desc%:</span>
+                                <input type="number" min="0" max="100" value="${itemDiscount}" onchange="updateItemDiscount('${item.code}', this.value)" class="w-11 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded p-0.5 text-center text-xs font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none" title="Desconto Direto no Item">
+                            </div>
+                        </div>
+                        <span class="text-xs font-black text-slate-900 dark:text-white">R$ ${totalItem.toFixed(2)}</span>
+                    </div>
+                `;
+                cartContainer.appendChild(div);
+            });
+
+            lucide.createIcons();
+
+            // Desconto do range slider (Desconto Global do Gestor)
+            const discountPercent = parseFloat(document.getElementById('discount-range').value);
+            document.getElementById('discount-display').innerText = `${discountPercent}%`;
+
+            let discountAmount = subtotal * (discountPercent / 100);
+            let totalLiquido = subtotal - discountAmount;
+
+            let detailsText = "";
+            if (currentPaymentMethod === 'a_vista') {
+                detailsText = "Pagamento integral à vista / PIX";
+            } else {
+                const installments = parseInt(document.getElementById('installments-select').value);
+                const valParcela = totalLiquido / installments;
+                detailsText = `${installments}x sem juros de R$ ${valParcela.toFixed(2)}`;
+            }
+
+            document.getElementById('summary-subtotal').innerText = `R$ ${subtotal.toFixed(2)}`;
+            document.getElementById('summary-total').innerText = `R$ ${totalLiquido.toFixed(2)}`;
+            document.getElementById('payment-details-text').innerText = detailsText;
+        }
+
+        // Hardware de Câmera Integrada
+        let streamPointer = null;
+
+        async function startCamera() {
+            const video = document.getElementById('camera-stream');
+            const preview = document.getElementById('photo-preview');
+            const placeholder = document.getElementById('media-placeholder');
+            const btnToggle = document.getElementById('btn-toggle-camera');
+            const btnCapture = document.getElementById('btn-capture');
+
+            try {
+                // Tenta abrir câmera traseira preferencialmente para fotografar produtos
+                streamPointer = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: "environment" } },
+                    audio: false
+                });
+
+                video.srcObject = streamPointer;
+                video.play();
+
+                video.classList.remove('hidden');
+                preview.classList.add('hidden');
+                placeholder.classList.add('hidden');
+
+                btnToggle.innerText = "Desligar Câmera";
+                btnToggle.onclick = stopCamera;
+                btnCapture.classList.remove('hidden');
+                showToast("Hardware de câmera inicializado!");
+            } catch (err) {
+                console.error("Falha ao abrir câmera física:", err);
+                showToast("Erro de acesso. Por favor, suba um arquivo.");
+            }
+        }
+
+        function stopCamera() {
+            const video = document.getElementById('camera-stream');
+            const btnToggle = document.getElementById('btn-toggle-camera');
+            const btnCapture = document.getElementById('btn-capture');
+
+            if (streamPointer) {
+                streamPointer.getTracks().forEach(track => track.stop());
+                streamPointer = null;
+            }
+
+            video.classList.add('hidden');
+            btnToggle.innerText = "Ligar Câmera";
+            btnToggle.onclick = startCamera;
+            btnCapture.classList.add('hidden');
+        }
+
+        function takeSnapshot() {
+            const video = document.getElementById('camera-stream');
+            const preview = document.getElementById('photo-preview');
+            const canvas = document.createElement('canvas');
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            base64ImageToUpload = canvas.toDataURL('image/jpeg');
+            preview.src = base64ImageToUpload;
+
+            preview.classList.remove('hidden');
+            stopCamera();
+            showToast("Foto do produto capturada!");
+        }
+
+        function loadLocalImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                base64ImageToUpload = e.target.result;
+                const preview = document.getElementById('photo-preview');
+                const placeholder = document.getElementById('media-placeholder');
+
+                preview.src = base64ImageToUpload;
+                preview.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                stopCamera();
+                showToast("Foto carregada do arquivo!");
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Envio do Produto à Planilha Google (ou armazenamento local se indisponível)
+        async function handleProductSubmit(event) {
+            event.preventDefault();
+
+            const code = document.getElementById('new-prod-code').value.trim();
+            const name = document.getElementById('new-prod-name').value.trim();
+            const price = parseFloat(document.getElementById('new-prod-price').value);
+            const stock = parseFloat(document.getElementById('new-prod-stock').value);
+            const category = document.getElementById('new-prod-category').value.trim() || "Geral";
+            const unit = document.getElementById('new-prod-unit').value;
+
+            const scriptUrl = localStorage.getItem('loop_script_url');
+            const folderId = localStorage.getItem('loop_folder_id') || "";
+
+            const btnSubmit = document.getElementById('btn-submit-product');
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = `<i data-lucide="refresh-cw" class="w-4 h-4 animate-spin"></i> Registrando item...`;
+            lucide.createIcons();
+
+            const payloadProduct = {
+                code,
+                name,
+                price,
+                stock,
+                category,
+                unit,
+                image: base64ImageToUpload || "https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO"
+            };
+
+            // Se não houver script configurado, salvar diretamente na lista em memória para visualização instantânea
+            if (!scriptUrl) {
+                localProducts.unshift(payloadProduct);
+                renderStockTable(localProducts);
+                renderCategoryPills(localProducts);
+                showToast("Produto adicionado localmente!");
+                resetProductForm();
+                switchTab('produtos');
+                return;
+            }
+
+            try {
+                const apiBody = {
+                    action: "create",
+                    code: code,
+                    name: name,
+                    price: price,
+                    stock: stock,
+                    category: category,
+                    unit: unit,
+                    folderId: folderId,
+                    imageName: `${code}_IMG.jpg`,
+                    imageBase64: base64ImageToUpload ? base64ImageToUpload.split(',')[1] : ""
+                };
+
+                await fetch(scriptUrl, {
+                    method: "POST",
+                    mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(apiBody)
+                });
+
+                showToast("Produto inserido na Planilha!");
+                resetProductForm();
+                
+                // Aguarda 1.5s para sincronizar a base e alternar
+                setTimeout(() => {
+                    syncData();
+                    switchTab('produtos');
+                }, 1500);
+
+            } catch (err) {
+                console.error("Falha ao se conectar à API Google:", err);
+                showToast("Conexão falhou. Salvando na lista local.");
+                localProducts.unshift(payloadProduct);
+                renderStockTable(localProducts);
+                renderCategoryPills(localProducts);
+                resetProductForm();
+                switchTab('produtos');
+            }
+        }
+
+        function resetProductForm() {
+            document.getElementById('product-form').reset();
+            document.getElementById('photo-preview').classList.add('hidden');
+            document.getElementById('photo-preview').src = "";
+            document.getElementById('media-placeholder').classList.remove('hidden');
+            base64ImageToUpload = "";
+
+            const btnSubmit = document.getElementById('btn-submit-product');
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> Concluir Cadastro de Produto`;
+            lucide.createIcons();
+        }
+
+        // GERAÇÃO DE PDF FORMATADO EM FOLHA A4 COMPLETA
+        function generatePDF() {
+            if (cart.length === 0) {
+                showToast("Adicione itens para criar um orçamento!");
+                return;
+            }
+
+            const clientName = document.getElementById('client-name').value.trim() || "Consumidor Final";
+            const clientPhone = document.getElementById('client-phone').value.trim() || "Não informado";
+
+            // Nome e Slogan da Empresa customizados nas configurações
+            const customCompanyName = localStorage.getItem('loop_pdf_company_name') || "LOOP ORÇAMENTOS";
+            const customCompanySlogan = localStorage.getItem('loop_pdf_company_slogan') || "SOLUÇÕES COMERCIAIS INTEGRADAS E SOB MEDIDA";
+
+            // Alimentar metadados do PDF
+            document.getElementById('pdf-company-title').innerText = customCompanyName.toUpperCase();
+            document.getElementById('pdf-company-slogan').innerText = customCompanySlogan.toUpperCase();
+            document.getElementById('pdf-client-name').innerText = clientName;
+            document.getElementById('pdf-client-phone').innerText = clientPhone;
+            document.getElementById('pdf-doc-date').innerText = `Data: ${new Date().toLocaleDateString('pt-BR')}`;
+            document.getElementById('pdf-doc-id').innerText = `Nº DOC: #${Math.floor(100000 + Math.random() * 900000)}`;
+
+            document.getElementById('pdf-signature-client-label').innerText = clientName;
+            document.getElementById('pdf-signature-client-desc').innerText = `Documento de Acordo do Cliente`;
+            document.getElementById('pdf-signature-seller-label').innerText = customCompanyName;
+            document.getElementById('pdf-signature-seller-desc').innerText = `Representante de Vendas Autorizado`;
+
+            // Carrega logotipo se houver
+            const pdfLogo = document.getElementById('pdf-logo-img');
+            if (base64Logo) {
+                pdfLogo.src = base64Logo;
+                pdfLogo.classList.remove('hidden');
+            } else {
+                pdfLogo.classList.add('hidden');
+            }
+
+            const tableBody = document.getElementById('pdf-items-body');
+            tableBody.innerHTML = "";
+
+            let subtotal = 0;
+
+            cart.forEach(item => {
+                const itemDiscount = item.discount || 0;
+                const finalUnitPrice = item.price * (1 - itemDiscount / 100);
+                const totalItem = finalUnitPrice * item.quantity;
+                subtotal += totalItem;
+
+                const tr = document.createElement('tr');
+                const unit = item.unit || 'un';
+                
+                // Exibe etiqueta de desconto unitário na linha do PDF se houver
+                const discountLabel = itemDiscount > 0 ? `<br><span style="color: #10b981; font-size: 9px; font-weight: bold;">(-${itemDiscount}%)</span>` : '';
+                
+                tr.className = "border-b border-zinc-100 text-slate-700";
+                tr.innerHTML = `
+                    <td class="py-2 px-1 font-mono text-[9px] text-zinc-500">${item.code}</td>
+                    <td class="py-2 px-1 font-bold">${item.name}</td>
+                    <td class="py-2 px-1 text-center">
+                        <img src="${item.image || 'https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'}" style="width: 55px; height: 55px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; display: inline-block; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    </td>
+                    <td class="py-2 px-1 text-center"><span style="font-size: 9px; font-weight: bold; background: #f1f5f9; padding: 2px 4px; border-radius: 3px; text-transform: uppercase;">${unit}</span></td>
+                    <td class="py-2 px-1 text-right font-semibold">${item.quantity}</td>
+                    <td class="py-2 px-1 text-right">R$ ${parseFloat(item.price).toFixed(2)}${discountLabel}</td>
+                    <td class="py-2 px-1 text-right font-bold text-slate-900">R$ ${totalItem.toFixed(2)}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            // Cálculos totais do PDF (baseado no subtotal já com descontos por item)
+            const discountPercent = parseFloat(document.getElementById('discount-range').value);
+            let discountAmount = subtotal * (discountPercent / 100);
+            let totalLiquido = subtotal - discountAmount;
+
+            let paymentText = "";
+            if (currentPaymentMethod === 'a_vista') {
+                paymentText = "CONDIÇÃO COMERCIAL: À VISTA / PIX";
+            } else {
+                const instVal = parseInt(document.getElementById('installments-select').value);
+                const parcelasTotal = totalLiquido / instVal;
+                paymentText = `CONDIÇÃO COMERCIAL: PARCELADO EM ${instVal}X DE R$ ${parcelasTotal.toFixed(2)}`;
+            }
+
+            document.getElementById('pdf-subtotal').innerText = `R$ ${subtotal.toFixed(2)}`;
+            document.getElementById('pdf-discount').innerText = `${discountPercent}%`;
+            document.getElementById('pdf-total').innerText = `R$ ${totalLiquido.toFixed(2)}`;
+            document.getElementById('pdf-payment-type').innerText = paymentText;
+
+            const isDarkActive = document.documentElement.classList.contains('dark');
+            if (isDarkActive) {
+                document.documentElement.classList.remove('dark');
+            }
+
+            // Configuração do html2pdf com margem ZERO para bater certinho com a folha A4 em CSS
+            const opt = {
+                margin:       0,
+                filename:     `Orcamento_${clientName.replace(/\s+/g, '_')}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            const element = document.getElementById('pdf-template');
+            element.classList.remove('hidden');
+
+            showToast("Formatando folha A4...");
+
+            html2pdf().from(element).set(opt).save().then(() => {
+                element.classList.add('hidden');
+                
+                // Restaurar o tema escuro se estivesse ativo anteriormente
+                if (isDarkActive) {
+                    document.documentElement.classList.add('dark');
+                }
+                showToast("Orçamento PDF baixado!");
+            }).catch(err => {
+                console.error("Erro na geração do PDF:", err);
+                element.classList.add('hidden');
+                if (isDarkActive) {
+                    document.documentElement.classList.add('dark');
+                }
+                showToast("Erro ao processar o PDF.");
+            });
+        }
+    </script>
+</body>
+</html>
