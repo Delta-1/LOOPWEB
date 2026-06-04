@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="pt-BR" class="light">
+<html lang="pt-BR" class="light h-screen overflow-hidden">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LOOP - Sistema de Orçamentos Minimalista</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,13 +15,11 @@
                         brand: {
                             50: '#f5f3ff',
                             100: '#ede9fe',
-                            500: '#8b5cf6', // Violeta elegante / premium
-                            600: '#7c3aed',
-                            700: '#6d28d9',
-                            800: '#5b21b6',
-                            900: '#4c1d95',
-                            premiumCardLight: '#faf9ff', // Tom perolado/lavanda suave premium
-                            premiumCardDark: '#121214',  // Preto sofisticado para o tema escuro
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            950: '#1e1b4b',
                             bgLight: '#f8fafc',
                             borderLight: '#e2e8f0'
                         }
@@ -32,8 +30,9 @@
     </script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- html2pdf.js -->
+    <!-- html2pdf.js para gerar PDF impecável com fotos -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
         
@@ -45,23 +44,35 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Estilo para garantir isolamento absoluto do tema escuro no PDF */
         #pdf-template-wrapper {
             position: absolute;
             left: -9999px;
             top: -9999px;
+            width: 794px !important;
+            min-width: 794px !important;
+            max-width: 794px !important;
+            height: 1105px !important;
+            min-height: 1105px !important;
+            max-height: 1105px !important;
+            overflow: visible !important;
+            display: block !important;
         }
 
         #pdf-template {
-            width: 794px !important;  /* Equivalente a 210mm (Largura A4) */
-            height: 1123px !important; /* Equivalente a 297mm (Altura A4) */
+            width: 794px !important;
+            min-width: 794px !important;
+            max-width: 794px !important;
+            height: 1105px !important;
+            min-height: 1105px !important;
+            max-height: 1105px !important;
             background-color: #ffffff !important;
             color: #18181b !important;
             box-sizing: border-box !important;
-            padding: 40px !important;
+            padding: 24px 36px 24px 36px !important;
             display: flex !important;
             flex-direction: column !important;
             justify-content: space-between !important;
+            margin: 0 !important;
         }
 
         #pdf-template, #pdf-template * {
@@ -74,165 +85,211 @@
 
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
-            width: 4px;
-            height: 4px;
+            width: 5px;
+            height: 5px;
         }
         ::-webkit-scrollbar-track {
-            background: rgba(0,0,0,0.03);
+            background: #f1f5f9;
         }
         .dark ::-webkit-scrollbar-track {
-            background: rgba(255,255,255,0.03);
+            background: #09090b;
         }
         ::-webkit-scrollbar-thumb {
-            background: #7c3aed;
-            border-radius: 10px;
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #27272a;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
 
-        /* Transição de Abas */
+        /* Transição suave de abas */
         .tab-pane {
-            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            opacity: 0;
+            transform: translateY(8px);
+            pointer-events: none;
+            position: absolute;
+            width: 100%;
+            top: 0;
+            left: 0;
+        }
+        .tab-pane.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+            position: relative;
         }
 
-        /* CORREÇÃO DO TEMA ESCURO: Força inputs, selects, modais e cards a herdarem o fundo escuro absoluto no dark mode */
-        .dark input, 
-        .dark select,
-        .dark textarea {
-            background-color: #121214 !important; /* premiumCardDark */
-            border-color: #27272a !important;     /* zinc-800 */
-            color: #f4f4f5 !important;            /* zinc-100 */
+        .dark body {
+            background-color: #09090b;
+            color: #f4f4f5;
+        }
+        .dark .bg-white:not(#pdf-template *):not(#pdf-template) {
+            background-color: #121214 !important;
+            color: #f4f4f5;
+        }
+        .dark .border-zinc-200:not(#pdf-template *):not(#pdf-template),
+        .dark .border-zinc-200\/80:not(#pdf-template *):not(#pdf-template),
+        .dark .border-zinc-100:not(#pdf-template *):not(#pdf-template) {
+            border-color: #1f1f23 !important;
+        }
+        .dark .bg-zinc-50:not(#pdf-template *):not(#pdf-template) {
+            background-color: #18181b !important;
+        }
+        .dark .bg-zinc-100:not(#pdf-template *):not(#pdf-template) {
+            background-color: #1f1f23 !important;
+        }
+        .dark input:not(#pdf-template *):not(#pdf-template),
+        .dark select:not(#pdf-template *):not(#pdf-template) {
+            background-color: #18181b !important;
+            color: #ffffff !important;
+            border-color: #27272a !important;
         }
         .dark input::placeholder {
-            color: #71717a !important;             /* zinc-500 */
+            color: #71717a !important;
         }
-        /* Correção específica do card de item individual do orçamento */
-        .dark .cart-item-card {
-            background-color: #121214 !important;
-            border-color: #27272a !important;
+        .dark .text-slate-900:not(#pdf-template *):not(#pdf-template) {
+            color: #ffffff !important;
+        }
+        .dark .text-slate-800:not(#pdf-template *):not(#pdf-template) {
+            color: #e4e4e7 !important;
+        }
+        .dark .text-zinc-400:not(#pdf-template *):not(#pdf-template) {
+            color: #a1a1aa !important;
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between pb-16 md:pb-0 dark:bg-zinc-950 dark:text-zinc-50">
+<body class="h-screen flex flex-col justify-between overflow-hidden">
 
-    <!-- HEADER DE IDENTIDADE -->
-    <header class="border-b border-zinc-200/80 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md sticky top-0 z-40 transition-all">
+    <header class="border-b border-zinc-200/80 dark:border-zinc-800 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md sticky top-0 z-50 transition-all shrink-0">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center shadow-md shadow-brand-600/20">
-                    <i data-lucide="layers" class="w-4.5 h-4.5 text-white"></i>
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center shadow-md">
+                    <i data-lucide="layers" class="w-5 h-5 text-white"></i>
                 </div>
                 <div>
-                    <span class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white" id="header-company-name">LOOP</span>
-                    <span class="text-[9px] text-zinc-400 font-bold uppercase tracking-widest ml-1" id="header-company-slogan">Orçamentos</span>
+                    <span class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white" id="nav-header-title">LOOP ORÇAMENTOS</span>
+                    <span class="hidden sm:inline-block text-[9px] text-zinc-400 font-semibold uppercase tracking-widest ml-1" id="nav-header-slogan">SOLUÇÕES COMERCIAIS</span>
                 </div>
             </div>
 
             <!-- Navegação Superior Desktop -->
-            <nav class="hidden md:flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800/85 p-1 rounded-lg">
-                <button onclick="switchTab('orçador')" id="btn-orçador" class="nav-btn active flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold transition-all text-brand-700 bg-white shadow-xs dark:bg-zinc-900 dark:text-brand-400">
-                    <i data-lucide="calculator" class="w-3.5 h-3.5"></i> Orçador
+            <nav class="hidden md:flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg">
+                <button onclick="switchTab('orcamentos')" id="nav-orcamentos" class="nav-btn active flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-bold transition-all text-brand-700 bg-white shadow-xs border border-zinc-200/50 dark:bg-zinc-800 dark:text-brand-300 dark:border-zinc-700">
+                    <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                    Orçador
                 </button>
-                <button onclick="switchTab('estoque')" id="btn-estoque" class="nav-btn flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold transition-all text-zinc-500 hover:text-zinc-850 dark:text-zinc-400 dark:hover:text-zinc-200">
-                    <i data-lucide="package" class="w-3.5 h-3.5"></i> Estoque
+                <button onclick="switchTab('produtos')" id="nav-produtos" class="nav-btn flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-bold transition-all text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200">
+                    <i data-lucide="package" class="w-3.5 h-3.5"></i>
+                    Estoque
                 </button>
-                <button onclick="switchTab('novo-item')" id="btn-novo-item" class="nav-btn flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold transition-all text-zinc-500 hover:text-zinc-850 dark:text-zinc-400 dark:hover:text-zinc-200">
-                    <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Novo Item
+                <button onclick="switchTab('cadastro')" id="nav-cadastro" class="nav-btn flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-bold transition-all text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200">
+                    <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                    Novo Item
                 </button>
-                <button onclick="switchTab('configuracoes')" id="nav-configuracoes" class="nav-btn flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold transition-all text-zinc-500 hover:text-zinc-850 dark:text-zinc-400 dark:hover:text-zinc-200">
-                    <i data-lucide="settings" class="w-3.5 h-3.5"></i> Configurações
+                <button onclick="switchTab('configuracoes')" id="nav-configuracoes" class="nav-btn flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-bold transition-all text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200">
+                    <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+                    Configurações
                 </button>
             </nav>
 
             <div class="flex items-center gap-3">
-                <button onclick="toggleTheme()" class="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 transition-colors cursor-pointer">
-                    <i data-lucide="sun" class="hidden dark:block w-4.5 h-4.5"></i>
-                    <i data-lucide="moon" class="block dark:hidden w-4.5 h-4.5"></i>
+                <!-- Seletor de Tema Clarinho / Escuro -->
+                <button onclick="toggleTheme()" class="p-2 rounded-lg bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-900 dark:hover:bg-zinc-850 transition-colors text-zinc-600 dark:text-zinc-300" title="Alternar Tema">
+                    <i data-lucide="moon" id="theme-icon-dark" class="w-4 h-4 hidden"></i>
+                    <i data-lucide="sun" id="theme-icon-light" class="w-4 h-4"></i>
                 </button>
-                <div id="connection-status" class="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 px-3 py-1 rounded-full text-[11px] font-medium border border-zinc-200 dark:border-zinc-700">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+
+                <div id="connection-status" class="flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 px-3 py-1 rounded-full text-[11px] font-semibold border border-zinc-200/60 dark:border-zinc-800">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
                     Carregando...
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- NOTIFICAÇÃO TOAST FLUTUANTE -->
-    <div id="toast" class="fixed bottom-20 md:bottom-6 right-6 z-50 transform translate-y-10 opacity-0 transition-all duration-300 bg-slate-900 border border-zinc-800 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-xs font-semibold">
-        <i data-lucide="info" class="w-4.5 h-4.5 text-brand-500"></i>
-        <span id="toast-message">-</span>
+    <!-- Notificações Toast -->
+    <div id="toast" class="fixed bottom-20 md:bottom-6 right-6 z-50 transform translate-y-10 opacity-0 transition-all duration-300 bg-slate-900 dark:bg-zinc-900 border border-zinc-800 dark:border-zinc-700 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-xs font-medium">
+        <i data-lucide="info" class="w-4 h-4 text-brand-500"></i>
+        <span id="toast-message">Operação executada com sucesso!</span>
     </div>
 
-    <!-- CONTAINER DA ÁREA DE CONTEÚDO -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 relative">
-        <div class="relative min-h-[500px]">
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 relative overflow-hidden flex flex-col h-[calc(100vh-4rem-2.5rem)]">
+        <div class="relative flex-grow overflow-hidden h-full">
 
-            <!-- ABA: ORÇADOR -->
-            <div id="tab-orçador" class="tab-pane active space-y-6">
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- TAB 1: ORÇAMENTADOR -->
+            <div id="tab-orcamentos" class="tab-pane active h-full overflow-hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full overflow-hidden">
                     
-                    <!-- Painel de Busca e Identificação (Esquerda) - Fundo Premium Perolado -->
-                    <div class="lg:col-span-7 bg-brand-premiumCardLight dark:bg-brand-premiumCardDark border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-sm flex flex-col justify-between space-y-5">
-                        <div class="space-y-4">
+                    <!-- Painel Esquerdo: Busca e Identificação de Cliente -->
+                    <div class="lg:col-span-7 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 p-5 rounded-2xl shadow-xs flex flex-col justify-between h-full overflow-hidden space-y-4">
+                        <div class="space-y-4 flex flex-col flex-1 overflow-hidden">
                             <div>
-                                <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                    <i data-lucide="shopping-bag" class="text-brand-500 w-4.5 h-4.5"></i>
+                                <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                    <i data-lucide="shopping-bag" class="text-brand-500 w-4 h-4"></i>
                                     Pesquisa de Itens do Estoque
                                 </h2>
                                 <p class="text-xs text-zinc-400">Insira termos ou códigos para localizar os produtos.</p>
                             </div>
 
                             <!-- Campo de Busca -->
-                            <div class="relative">
-                                <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                            <div class="relative shrink-0">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                                     <i data-lucide="search" class="w-4 h-4 text-zinc-400"></i>
                                 </span>
-                                <input type="text" id="search-input" onkeyup="searchProducts()" placeholder="Buscar por código, nome ou categoria..." class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-xl py-2.5 pl-10 pr-4 text-xs text-slate-800 dark:text-zinc-200 placeholder-zinc-450 focus:outline-none transition-all focus:ring-1 focus:ring-brand-500">
+                                <input type="text" id="search-input" onkeyup="searchProducts()" placeholder="Buscar por código, nome ou categoria..." class="w-full bg-zinc-50 dark:bg-zinc-850/50 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-xl py-2.5 pl-9 pr-3 text-xs text-slate-800 dark:text-zinc-200 placeholder-zinc-400 focus:outline-none transition-all">
                             </div>
 
-                            <!-- Filtros Rápidos de Categoria -->
-                            <div class="flex flex-wrap gap-1.5" id="category-pills"></div>
+                            <!-- Categorias Rápidas -->
+                            <div class="flex flex-wrap gap-1.5 shrink-0" id="category-pills">
+                                <!-- Preenchido via Javascript -->
+                            </div>
 
-                            <!-- Resultados da Busca -->
-                            <div id="search-results" class="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
-                                <div class="text-center py-10 text-zinc-400 text-xs">
+                            <!-- Resultados de Pesquisa (Scrollable interno) -->
+                            <div id="search-results" class="space-y-2 flex-1 overflow-y-auto pr-1">
+                                <div class="text-center py-8 text-zinc-400 text-xs">
                                     Insira termos na barra de busca acima para carregar os produtos.
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Ficha Cadastral do Cliente -->
-                        <div class="border-t border-zinc-100 dark:border-zinc-800/60 pt-4 space-y-3">
+                        <!-- Dados do Cliente -->
+                        <div class="border-t border-zinc-100 dark:border-zinc-800 pt-4 space-y-3 shrink-0">
                             <h3 class="text-xs font-bold text-zinc-400 uppercase tracking-wider">Identificação do Cliente</h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-[11px] text-zinc-400 font-bold mb-1 uppercase tracking-wide">Nome / Razão Social</label>
-                                    <input type="text" id="client-name" placeholder="Nome do Cliente" class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-250 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                    <label class="block text-[11px] text-zinc-400 font-bold mb-1">NOME / RAZÃO SOCIAL</label>
+                                    <input type="text" id="client-name" placeholder="Nome do Cliente" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
                                 </div>
                                 <div>
-                                    <label class="block text-[11px] text-zinc-400 font-bold mb-1 uppercase tracking-wide">Referência / Medida Geral</label>
-                                    <input type="text" id="client-metragem" placeholder="Ex: Casa 2, Cozinha" class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-250 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                    <label class="block text-[11px] text-zinc-400 font-bold mb-1">REFERÊNCIA / MEDIDA GERAL</label>
+                                    <input type="text" id="client-metragem" placeholder="Ex: Casa 2, Cozinha" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Painel do Carrinho e Fechamento (Direita) - Fundo Premium Perolado -->
-                    <div class="lg:col-span-5 bg-brand-premiumCardLight dark:bg-brand-premiumCardDark border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-sm flex flex-col justify-between space-y-4">
-                        <div class="space-y-4">
-                            <div class="flex items-center justify-between">
+                    <!-- Painel Direito: Carrinho de Compra e Fechamento -->
+                    <div class="lg:col-span-5 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 p-5 rounded-2xl shadow-xs flex flex-col justify-between h-full overflow-hidden space-y-4">
+                        <div class="space-y-4 flex flex-col flex-1 overflow-hidden">
+                            <div class="flex items-center justify-between shrink-0">
                                 <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                                    <i data-lucide="receipt" class="text-brand-500 w-4.5 h-4.5"></i>
+                                    <i data-lucide="receipt" class="text-brand-500 w-4 h-4"></i>
                                     Itens do Orçamento
                                 </h2>
-                                <div class="flex items-center gap-2.5">
-                                    <span id="cart-count" class="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-[10px] px-2.5 py-0.5 rounded-full font-bold">0 itens</span>
-                                    <button onclick="clearCart()" class="text-[10px] text-rose-500 font-bold uppercase transition-colors cursor-pointer flex items-center gap-1">
-                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Limpar
+                                <div class="flex items-center gap-1.5">
+                                    <span id="cart-count" class="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-[10px] px-2 py-0.5 rounded-full font-bold">0 itens</span>
+                                    <button onclick="clearCart()" class="text-xs text-rose-500 hover:text-rose-600 font-bold flex items-center gap-0.5" title="Limpar carrinho">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> LIMPAR
                                     </button>
                                 </div>
                             </div>
 
-                            <!-- Lista do Carrinho de Compras -->
-                            <div id="cart-items" class="space-y-3.5 max-h-[250px] overflow-y-auto pr-1">
+                            <!-- Lista do Carrinho (Scrollable interno) -->
+                            <div id="cart-items" class="space-y-3 flex-1 overflow-y-auto pr-1">
                                 <div class="text-center py-10 text-zinc-400 text-xs flex flex-col items-center gap-2">
                                     <i data-lucide="shopping-cart" class="w-6 h-6 opacity-30 text-zinc-400"></i>
                                     Nenhum item adicionado ao orçamento.
@@ -240,87 +297,89 @@
                             </div>
                         </div>
 
-                        <!-- Resumo Financeiro Completo -->
-                        <div class="border-t border-zinc-100 dark:border-zinc-800/60 pt-4 space-y-3.5">
-                            <div class="flex justify-between items-center text-xs">
+                        <!-- Bloco Financeiro -->
+                        <div class="border-t border-zinc-100 dark:border-zinc-800 pt-4 space-y-3 shrink-0">
+                            <div class="flex justify-between items-center text-xs font-semibold text-slate-800 dark:text-zinc-300">
                                 <span class="text-zinc-400">Subtotal</span>
-                                <span id="summary-subtotal" class="font-bold text-slate-800 dark:text-zinc-200">R$ 0,00</span>
+                                <span id="summary-subtotal">R$ 0,00</span>
                             </div>
 
-                            <!-- Desconto Geral -->
+                            <!-- Desconto Comercial -->
                             <div>
                                 <div class="flex justify-between items-center mb-1">
                                     <span class="text-xs text-zinc-400">Desconto do Gestor</span>
-                                    <span id="discount-display" class="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 px-2 py-0.5 rounded">0%</span>
+                                    <span id="discount-display" class="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-400 px-1.5 py-0.5 rounded">0%</span>
                                 </div>
-                                <input type="range" id="discount-range" min="0" max="30" value="0" oninput="updateCalculations()" class="w-full accent-brand-600 bg-zinc-200 dark:bg-zinc-800 h-1.5 rounded-lg cursor-pointer">
+                                <input type="range" id="discount-range" min="0" max="30" value="0" oninput="updateCalculations()" class="w-full accent-brand-600 bg-zinc-200 dark:bg-zinc-800 h-1 rounded-lg cursor-pointer">
                             </div>
 
-                            <!-- Opções de Pagamento (Sem bônus do PIX automático) -->
+                            <!-- Condição de Pagamento -->
                             <div class="grid grid-cols-2 gap-2">
-                                <button onclick="setPaymentMethod('a_vista')" id="btn-pay-vista" class="py-2.5 px-3 rounded-lg text-xs font-bold border transition-all text-center bg-brand-50 border-brand-500 text-brand-700 dark:bg-brand-950/20 dark:border-brand-600 dark:text-brand-300">
+                                <button onclick="setPaymentMethod('a_vista')" id="btn-pay-vista" class="py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center bg-brand-50 border-brand-500 text-brand-700 dark:bg-brand-950/20 dark:border-brand-600 dark:text-brand-300">
                                     À Vista / PIX
                                     <span class="block text-[9px] text-zinc-400 dark:text-zinc-500 font-medium">Parcela Única</span>
                                 </button>
-                                <button onclick="setPaymentMethod('parcelado')" id="btn-pay-parcelado" class="py-2.5 px-3 rounded-lg text-xs font-bold border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-950 transition-all text-center">
+                                <button onclick="setPaymentMethod('parcelado')" id="btn-pay-parcelado" class="py-2 px-3 rounded-lg text-xs font-bold border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-850 transition-all text-center">
                                     Cartão / Parcelas
                                     <span class="block text-[9px] text-zinc-400 dark:text-zinc-500 font-medium">Até 12x s/ juros</span>
                                 </button>
                             </div>
 
-                            <!-- Selecionar Parcelas -->
+                            <!-- Opção de Parcelamento -->
                             <div id="installments-container" class="hidden">
-                                <label class="block text-[10px] text-zinc-400 font-bold uppercase tracking-wider mb-1">Parcelas do Cartão</label>
-                                <select id="installments-select" onchange="updateCalculations()" class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-2 text-xs text-slate-800 dark:text-zinc-250 focus:outline-none">
-                                    <option value="1">1x sem juros</option>
-                                    <option value="2">2x sem juros</option>
-                                    <option value="3">3x sem juros</option>
-                                    <option value="4">4x sem juros</option>
-                                    <option value="6">6x sem juros</option>
-                                    <option value="10">10x sem juros</option>
-                                    <option value="12">12x sem juros</option>
+                                <label class="block text-[10px] text-zinc-400 font-bold uppercase tracking-wider mb-1">Divisão de Parcelas</label>
+                                <select id="installments-select" onchange="updateCalculations()" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-lg p-1.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                    <option value="1">1x Sem Juros</option>
+                                    <option value="2">2x Sem Juros</option>
+                                    <option value="3">3x Sem Juros</option>
+                                    <option value="4">4x Sem Juros</option>
+                                    <option value="6">6x Sem Juros</option>
+                                    <option value="10">10x Sem Juros</option>
+                                    <option value="12">12x Sem Juros</option>
                                 </select>
                             </div>
 
-                            <!-- Total Final -->
-                            <div class="bg-white dark:bg-zinc-950 p-3 rounded-xl flex justify-between items-center border border-zinc-200 dark:border-zinc-800">
+                            <!-- Totalização líquida -->
+                            <div class="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl flex justify-between items-center border border-zinc-100 dark:border-zinc-800/60">
                                 <div>
                                     <span class="text-[9px] text-zinc-400 uppercase tracking-widest font-bold">Total Líquido</span>
-                                    <div id="payment-details-text" class="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">Parcela única</div>
+                                    <div id="payment-details-text" class="text-[10px] text-zinc-500 dark:text-zinc-400 font-semibold">À vista sem bônus</div>
                                 </div>
                                 <span id="summary-total" class="text-xl font-black text-slate-900 dark:text-white">R$ 0,00</span>
                             </div>
 
-                            <!-- Gerar Documento -->
-                            <button onclick="generatePDF()" class="w-full bg-brand-600 hover:bg-brand-500 text-white py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer">
-                                <i data-lucide="file-down" class="w-4 h-4"></i> Emitir Proposta Comercial
+                            <!-- Ação de Exportar -->
+                            <button onclick="generatePDF()" class="w-full bg-brand-600 hover:bg-brand-500 text-white py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer">
+                                <i data-lucide="file-down" class="w-4 h-4"></i>
+                                Emitir Proposta Comercial
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ABA: ESTOQUE -->
-            <div id="tab-estoque" class="tab-pane space-y-6 hidden opacity-0">
-                <div class="bg-brand-premiumCardLight dark:bg-brand-premiumCardDark border border-zinc-200/80 dark:border-zinc-800/80 p-5 rounded-2xl shadow-sm">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+            <!-- TAB 2: PRODUTOS / ESTOQUE -->
+            <div id="tab-produtos" class="tab-pane h-full overflow-hidden">
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 p-5 rounded-2xl shadow-xs flex flex-col h-full overflow-hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 shrink-0">
                         <div>
                             <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                                <i data-lucide="grid" class="text-brand-500 w-4.5 h-4.5"></i>
+                                <i data-lucide="grid" class="text-brand-500 w-4 h-4"></i>
                                 Estoque Consolidado
                             </h2>
                             <p class="text-xs text-zinc-400">Verifique os níveis de estoque e precificação por unidades físicas.</p>
                         </div>
-                        <button onclick="syncData()" class="bg-white hover:bg-zinc-100 dark:bg-zinc-950 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer">
-                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="sync-icon"></i> Forçar Sincronismo
+                        <button onclick="syncData()" class="bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-750 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="sync-icon"></i>
+                            Forçar Sincronismo
                         </button>
                     </div>
 
-                    <!-- Tabela de Estoque -->
-                    <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-800">
+                    <!-- Tabela de Estoque (Rolagem interna) -->
+                    <div class="overflow-auto rounded-xl border border-zinc-200 dark:border-zinc-800 flex-1">
                         <table class="w-full text-left border-collapse min-w-[600px]">
-                            <thead>
-                                <tr class="bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 text-[10px] text-zinc-400 uppercase font-bold tracking-wider">
+                            <thead class="sticky top-0 bg-white dark:bg-zinc-900 z-10">
+                                <tr class="bg-zinc-50 dark:bg-zinc-850 border-b border-zinc-200 dark:border-zinc-800 text-[10px] text-zinc-400 uppercase font-bold tracking-wider">
                                     <th class="py-3 px-4">Foto</th>
                                     <th class="py-3 px-4">Código</th>
                                     <th class="py-3 px-4">Produto</th>
@@ -331,18 +390,20 @@
                                     <th class="py-3 px-4 text-right">Ação</th>
                                 </tr>
                             </thead>
-                            <tbody id="stock-table-body" class="divide-y divide-zinc-100 dark:divide-zinc-800/80 text-xs text-slate-700 dark:text-zinc-300"></tbody>
+                            <tbody id="stock-table-body" class="divide-y divide-zinc-100 dark:divide-zinc-800 text-xs text-slate-700 dark:text-zinc-300">
+                                <!-- Dinâmico via JavaScript -->
+                            </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- ABA: NOVO ITEM -->
-            <div id="tab-novo-item" class="tab-pane space-y-6 hidden opacity-0">
-                <div class="max-w-3xl mx-auto bg-brand-premiumCardLight dark:bg-brand-premiumCardDark border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-sm">
+            <!-- TAB 3: CADASTRO DE NOVO ITEM -->
+            <div id="tab-cadastro" class="tab-pane h-full overflow-y-auto pr-1">
+                <div class="max-w-3xl mx-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl shadow-xs">
                     <div class="mb-5">
                         <h2 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                            <i data-lucide="plus-circle" class="text-brand-500 w-4.5 h-4.5"></i>
+                            <i data-lucide="plus-circle" class="text-brand-500 w-4 h-4"></i>
                             Entrada de Novo Produto
                         </h2>
                         <p class="text-xs text-zinc-400">Insira as informações técnicas para incorporação imediata na planilha integrada.</p>
@@ -355,12 +416,12 @@
                                 <div class="grid grid-cols-3 gap-3">
                                     <div class="col-span-2">
                                         <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Cód. Registro</label>
-                                        <input type="text" id="new-prod-code" required placeholder="L-900" class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                        <input type="text" id="new-prod-code" required placeholder="L-900" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
                                     </div>
                                     <div>
                                         <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Unidade</label>
-                                        <select id="new-prod-unit" class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
-                                            <option value="un">Unidade (un)</option>
+                                        <select id="new-prod-unit" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                            <option value="un">Unidade</option>
                                             <option value="kg">Quilo (kg)</option>
                                             <option value="L">Litro (L)</option>
                                             <option value="m">Metro (m)</option>
@@ -371,23 +432,23 @@
 
                                 <div>
                                     <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Nome do Item</label>
-                                    <input type="text" id="new-prod-name" required placeholder="Ex: Tecido Oxford Azul" class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                    <input type="text" id="new-prod-name" required placeholder="Ex: Tecido Oxford Azul" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
                                 </div>
 
                                 <div class="grid grid-cols-2 gap-3">
                                     <div>
                                         <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Preço Un. / Medida (R$)</label>
-                                        <input type="number" step="0.01" id="new-prod-price" required placeholder="0.00" class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                        <input type="number" step="0.01" id="new-prod-price" required placeholder="0.00" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
                                     </div>
                                     <div>
                                         <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Disponibilidade Inicial</label>
-                                        <input type="number" step="0.01" id="new-prod-stock" required placeholder="10.0" class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                        <input type="number" step="0.01" id="new-prod-stock" required placeholder="10.0" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
                                     </div>
                                 </div>
 
                                 <div>
                                     <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Categoria Comercial</label>
-                                    <input type="text" id="new-prod-category" placeholder="Ex: Tecidos" class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-250 focus:outline-none">
+                                    <input type="text" id="new-prod-category" placeholder="Ex: Tecidos" class="w-full bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
                                 </div>
                             </div>
 
@@ -395,9 +456,12 @@
                             <div class="md:col-span-5 flex flex-col justify-between">
                                 <div>
                                     <span class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1.5">Fotografia de Referência</span>
-                                    <div class="relative bg-white dark:bg-zinc-950 border-2 border-dashed border-zinc-200 dark:border-zinc-700 hover:border-brand-500 rounded-xl overflow-hidden h-52 flex flex-col items-center justify-center transition-all">
+                                    <div class="relative bg-zinc-50 dark:bg-zinc-850 border-2 border-dashed border-zinc-200 dark:border-zinc-750 hover:border-brand-500 rounded-xl overflow-hidden h-52 flex flex-col items-center justify-center transition-all">
+                                        <!-- Video Stream de Câmera -->
                                         <video id="camera-stream" class="hidden absolute inset-0 w-full h-full object-cover"></video>
+                                        <!-- Preview final -->
                                         <img id="photo-preview" class="hidden absolute inset-0 w-full h-full object-cover">
+                                        
                                         <div id="media-placeholder" class="text-center p-4 space-y-2">
                                             <i data-lucide="image-plus" class="w-6 h-6 text-zinc-400 mx-auto"></i>
                                             <p class="text-[10px] text-zinc-400 font-medium">Capture a foto real do item</p>
@@ -405,33 +469,39 @@
                                     </div>
                                 </div>
 
+                                <!-- Botões para Foto -->
                                 <div class="grid grid-cols-2 gap-2 mt-3">
                                     <button type="button" id="btn-toggle-camera" onclick="startCamera()" class="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200/80 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 p-2 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 border border-zinc-200 dark:border-zinc-700 cursor-pointer">
-                                        <i data-lucide="camera" class="w-3.5 h-3.5"></i> Ligar Câmera
+                                        <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                                        Ligar Câmera
                                     </button>
                                     <button type="button" id="btn-capture" onclick="takeSnapshot()" class="hidden bg-brand-600 hover:bg-brand-500 text-white p-2 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer">
-                                        <i data-lucide="aperture" class="w-3.5 h-3.5"></i> Tirar Foto
+                                        <i data-lucide="aperture" class="w-3.5 h-3.5"></i>
+                                        Tirar Foto
                                     </button>
                                     <input type="file" id="file-upload" accept="image/*" onchange="loadLocalImage(event)" class="hidden">
                                     <button type="button" id="btn-upload-trigger" onclick="document.getElementById('file-upload').click()" class="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200/80 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 p-2 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1.5 border border-zinc-200 dark:border-zinc-700 cursor-pointer">
-                                        <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i> Subir Foto
+                                        <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+                                        Subir Foto
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="pt-4 border-t border-zinc-100 dark:border-zinc-800/60">
+                        <!-- Botão Principal -->
+                        <div class="pt-4 border-t border-zinc-100 dark:border-zinc-800">
                             <button type="submit" id="btn-submit-product" class="w-full bg-brand-600 hover:bg-brand-500 text-white py-3 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer">
-                                <i data-lucide="save" class="w-4 h-4"></i> Concluir Cadastro de Produto
+                                <i data-lucide="save" class="w-4 h-4"></i>
+                                Concluir Cadastro de Produto
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
 
-            <!-- ABA: CONFIGURAÇÕES -->
-            <div id="tab-configuracoes" class="tab-pane space-y-6 hidden opacity-0">
-                <div class="max-w-xl mx-auto bg-brand-premiumCardLight dark:bg-brand-premiumCardDark border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-sm space-y-5">
+            <!-- TAB 4: CONFIGURAÇÕES -->
+            <div id="tab-configuracoes" class="tab-pane h-full overflow-y-auto pr-1">
+                <div class="max-w-xl mx-auto bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl shadow-xs space-y-5">
                     <div>
                         <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                             <i data-lucide="settings" class="text-brand-500"></i>
@@ -441,48 +511,53 @@
                     </div>
 
                     <div class="space-y-4">
-                        <div class="p-4 bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800/80 space-y-3">
+                        <!-- Customização de Cabeçalho do PDF -->
+                        <div class="p-4 bg-zinc-50 dark:bg-zinc-850 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-3">
                             <h3 class="text-xs font-bold text-zinc-500 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
                                 <i data-lucide="layout-template" class="w-3.5 h-3.5 text-brand-500"></i>
                                 Identidade do PDF de Orçamento
                             </h3>
                             <div>
                                 <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Nome da Empresa (Título Principal)</label>
-                                <input type="text" id="config-company-name" placeholder="Ex: LOOP ORÇAMENTOS" class="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 focus:border-brand-500 rounded-lg p-2 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                <input type="text" id="config-company-name" placeholder="Ex: LOOP ORÇAMENTOS" class="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:border-brand-500 rounded-lg p-2 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Slogan ou Subtítulo Comercial</label>
-                                <input type="text" id="config-company-slogan" placeholder="Ex: SOLUÇÕES COMERCIAIS INTEGRADAS E SOB MEDIDA" class="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 focus:border-brand-500 rounded-lg p-2 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
+                                <input type="text" id="config-company-slogan" placeholder="Ex: SOLUÇÕES COMERCIAIS INTEGRADAS E SOB MEDIDA" class="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 focus:border-brand-500 rounded-lg p-2 text-xs text-slate-800 dark:text-zinc-200 focus:outline-none">
                             </div>
                         </div>
 
                         <div>
                             <label class="block text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-wide">URL da API Google Apps Script</label>
-                            <input type="text" id="config-script-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-white border border-zinc-200 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 focus:outline-none transition-all dark:bg-zinc-950 dark:border-zinc-700">
+                            <input type="text" id="config-script-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-zinc-50 border border-zinc-200 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 focus:outline-none transition-all dark:bg-zinc-800 dark:border-zinc-700">
+                            <span class="text-[9px] text-zinc-400 mt-1 block">Insira a URL de implantação gerada no editor do Apps Script da planilha.</span>
                         </div>
 
                         <div>
                             <label class="block text-xs font-semibold text-zinc-500 mb-1 uppercase tracking-wide">ID da Pasta no Google Drive (Fotos)</label>
-                            <input type="text" id="config-folder-id" placeholder="ID exclusivo da pasta de imagens" class="w-full bg-white border border-zinc-200 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 focus:outline-none transition-all dark:bg-zinc-950 dark:border-zinc-700">
+                            <input type="text" id="config-folder-id" placeholder="ID exclusivo da pasta de imagens" class="w-full bg-zinc-50 border border-zinc-200 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 focus:outline-none transition-all dark:bg-zinc-800 dark:border-zinc-700">
+                            <span class="text-[9px] text-zinc-400 mt-1 block">As fotos de novos cadastros serão armazenadas diretamente no seu Google Drive pessoal.</span>
                         </div>
 
                         <div>
                             <label class="block text-xs font-semibold text-zinc-500 mb-1.5 uppercase tracking-wide">Logotipo Corporativo (Opcional - Exibe no PDF)</label>
                             <div class="flex items-center gap-3">
-                                <div class="w-14 h-14 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 flex items-center justify-center overflow-hidden">
+                                <div class="w-14 h-14 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
                                     <img id="logo-preview" src="https://placehold.co/100x100/f1f5f9/94a3b8?text=LOGO" class="w-full h-full object-contain">
                                 </div>
                                 <div class="flex-grow">
                                     <input type="file" id="logo-upload" accept="image/*" onchange="loadCompanyLogo(event)" class="hidden">
-                                    <button type="button" onclick="document.getElementById('logo-upload').click()" class="bg-white hover:bg-zinc-50 dark:bg-zinc-950 dark:hover:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
-                                        <i data-lucide="image-plus" class="w-3.5 h-3.5"></i> Importar Logo
+                                    <button type="button" onclick="document.getElementById('logo-upload').click()" class="bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
+                                        <i data-lucide="image-plus" class="w-3.5 h-3.5"></i>
+                                        Importar Logo
                                     </button>
                                 </div>
                             </div>
                         </div>
 
                         <button onclick="saveConfigurations()" class="w-full bg-brand-600 hover:bg-brand-500 text-white py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1 cursor-pointer">
-                            <i data-lucide="check" class="w-4 h-4"></i> Confirmar Parâmetros
+                            <i data-lucide="check" class="w-4 h-4"></i>
+                            Confirmar Parâmetros
                         </button>
                     </div>
                 </div>
@@ -491,32 +566,13 @@
         </div>
     </main>
 
-    <!-- NAVEGAÇÃO INFERIOR FIXA (MOBILE) -->
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800 flex justify-around py-2.5 z-40 shadow-lg">
-        <button onclick="switchTab('orçador')" id="m-btn-orçador" class="flex flex-col items-center gap-0.5 text-brand-600 dark:text-brand-400 font-bold">
-            <i data-lucide="calculator" class="w-5 h-5"></i>
-            <span class="text-[10px]">Orçador</span>
-        </button>
-        <button onclick="switchTab('estoque')" id="m-btn-estoque" class="flex flex-col items-center gap-0.5 text-zinc-500 dark:text-zinc-400">
-            <i data-lucide="package" class="w-5 h-5"></i>
-            <span class="text-[10px]">Estoque</span>
-        </button>
-        <button onclick="switchTab('novo-item')" id="m-btn-novo-item" class="flex flex-col items-center gap-0.5 text-zinc-500 dark:text-zinc-400">
-            <i data-lucide="plus-circle" class="w-5 h-5"></i>
-            <span class="text-[10px]">Novo Item</span>
-        </button>
-        <button onclick="switchTab('configuracoes')" id="m-btn-configuracoes" class="flex flex-col items-center gap-0.5 text-zinc-500 dark:text-zinc-400">
-            <i data-lucide="settings" class="w-5 h-5"></i>
-            <span class="text-[10px]">Ajustes</span>
-        </button>
-    </nav>
-
     <!-- MODAL DE EDIÇÃO DE DADOS DO PRODUTO (RÁPIDO) -->
     <div id="edit-product-modal" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[100] hidden">
-        <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl max-w-md w-full mx-4 shadow-2xl space-y-4 text-slate-800 dark:text-zinc-200">
+        <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl max-w-md w-full mx-4 shadow-2xl space-y-4">
             <div class="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
                 <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <i data-lucide="edit" class="text-brand-500 w-4 h-4"></i> Ajustar Dados do Produto
+                    <i data-lucide="edit" class="text-brand-500 w-4 h-4"></i>
+                    Ajustar Dados do Produto
                 </h3>
                 <button onclick="closeEditModal()" class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer">
                     <i data-lucide="x" class="w-4 h-4"></i>
@@ -535,29 +591,29 @@
 
                 <div>
                     <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Nome do Produto</label>
-                    <input type="text" id="edit-prod-name" required class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
+                    <input type="text" id="edit-prod-name" required class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-750 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Preço Base (R$)</label>
-                        <input type="number" step="0.01" id="edit-prod-price" required class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
+                        <input type="number" step="0.01" id="edit-prod-price" required class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-750 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Estoque Físico</label>
-                        <input type="number" step="0.01" id="edit-prod-stock" required class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
+                        <input type="number" step="0.01" id="edit-prod-stock" required class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-750 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Categoria Comercial</label>
-                        <input type="text" id="edit-prod-category" class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
+                        <input type="text" id="edit-prod-category" class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-750 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
                     </div>
                     <div>
                         <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Unidade</label>
-                        <select id="edit-prod-unit" class="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
-                            <option value="un">Unidade (un)</option>
+                        <select id="edit-prod-unit" class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-750 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
+                            <option value="un">Unidade</option>
                             <option value="kg">Quilo (kg)</option>
                             <option value="L">Litro (L)</option>
                             <option value="m">Metro (m)</option>
@@ -566,15 +622,32 @@
                     </div>
                 </div>
 
-                <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-2 text-xs">
-                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-xl font-bold transition-all cursor-pointer">
+                <div class="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-end gap-2">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-xl text-xs font-bold transition-all cursor-pointer">
                         Cancelar
                     </button>
-                    <button type="submit" id="btn-save-edit" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer">
-                        <i data-lucide="check" class="w-3.5 h-3.5"></i> Confirmar Alterações
+                    <button type="submit" id="btn-save-edit" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
+                        <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                        Confirmar Alterações
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL CUSTOMIZADO DE CONFIRMAÇÃO DE EXCLUSÃO -->
+    <div id="confirm-dialog" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[150] hidden">
+        <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl max-w-sm w-full mx-4 shadow-2xl space-y-4">
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white" id="confirm-title">Excluir Item do Estoque?</h3>
+            <p class="text-xs text-zinc-400" id="confirm-body">Você realmente deseja remover este item permanentemente da planilha e do estoque?</p>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="resolveConfirmation(false)" class="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-xl text-xs font-bold cursor-pointer">
+                    Cancelar
+                </button>
+                <button onclick="resolveConfirmation(true)" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold cursor-pointer">
+                    Confirmar Exclusão
+                </button>
+            </div>
         </div>
     </div>
 
@@ -583,12 +656,12 @@
         <div id="pdf-template">
             <div>
                 <!-- Cabeçalho do PDF -->
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #7c3aed; padding-bottom: 15px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #4f46e5; padding-bottom: 12px; margin-bottom: 15px;">
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <img id="pdf-logo-img" src="" style="height: 50px; width: auto; max-width: 120px; object-fit: contain; display: none;">
+                        <img id="pdf-logo-img" src="" style="height: 44px; width: auto; max-width: 120px; object-fit: contain; display: none;">
                         <div>
-                            <h1 style="font-size: 24px; font-weight: 850; color: #1e1b4b !important; margin: 0; text-transform: uppercase;" id="pdf-company-title">LOOP ORÇAMENTOS</h1>
-                            <p style="font-size: 10px; color: #4b5563 !important; margin: 2px 0 0 0; font-weight: 600;" id="pdf-company-slogan">SOLUÇÕES COMERCIAIS INTEGRADAS</p>
+                            <h1 style="font-size: 22px; font-weight: 850; color: #1e1b4b !important; margin: 0; text-transform: uppercase;" id="pdf-company-title">LOOP ORÇAMENTOS</h1>
+                            <p style="font-size: 9px; color: #4b5563 !important; margin: 2px 0 0 0; font-weight: 600;" id="pdf-company-slogan">SOLUÇÕES COMERCIAIS INTEGRADAS</p>
                         </div>
                     </div>
                     <div style="text-align: right;">
@@ -598,23 +671,35 @@
                 </div>
 
                 <!-- Dados do Cliente -->
-                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11px;">
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11px;">
                     <div><strong>CLIENTE CONTRATANTE:</strong> <span id="pdf-client-name" style="text-transform: uppercase; font-weight: 700;">Consumidor Final</span></div>
                     <div><strong>METRAGEM GERAL / REFERÊNCIA:</strong> <span id="pdf-client-metragem" style="font-weight: 700;">Não informada</span></div>
                 </div>
 
                 <!-- Tabela de Itens Selecionados no PDF -->
-                <table style="width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 20px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 15px;">
                     <thead>
-                        <tr style="background-color: #7c3aed; color: #ffffff !important;">
-                            <th style="padding: 8px; text-align: left; color: white !important; font-weight: bold; border-top-left-radius: 4px; border-bottom-left-radius: 4px;">COD</th>
-                            <th style="padding: 8px; text-align: left; color: white !important; font-weight: bold;">PRODUTOS</th>
-                            <th style="padding: 8px; text-align: center; color: white !important; font-weight: bold;">IMAGEM DO PRODUTO</th>
-                            <th style="padding: 8px; text-align: center; color: white !important; font-weight: bold;">METRAGEM</th>
-                            <th style="padding: 8px; text-align: left; color: white !important; font-weight: bold; max-width: 130px;">DESCRIÇÃO</th>
-                            <th style="padding: 8px; text-align: center; color: white !important; font-weight: bold;">QTD</th>
-                            <th style="padding: 8px; text-align: right; color: white !important; font-weight: bold;">PREÇO</th>
-                            <th style="padding: 8px; text-align: right; color: white !important; font-weight: bold; border-top-right-radius: 4px; border-bottom-right-radius: 4px;">UN. TOTAL</th>
+                        <tr style="background-color: #4f46e5; color: #ffffff !important;">
+                            <th style="padding: 8px 6px; text-align: center; color: white !important; font-weight: 950 !important; border-top-left-radius: 6px; border-bottom-left-radius: 6px; min-width: 90px; font-size: 11px;">
+                                METRAGEM / QTD
+                                <span style="display: block; font-size: 8px; color: #ede9fe !important; font-weight: 600 !important; margin-top: 1px;">Quant. e Medida</span>
+                            </th>
+                            <th style="padding: 8px 6px; text-align: center; color: white !important; font-weight: 950 !important; min-width: 70px; font-size: 11px;">
+                                IMAGEM
+                                <span style="display: block; font-size: 8px; color: #ede9fe !important; font-weight: 600 !important; margin-top: 1px;">Foto do Item</span>
+                            </th>
+                            <th style="padding: 8px 6px; text-align: left; color: white !important; font-weight: 950 !important; max-width: 250px; font-size: 11px;">
+                                DESCRIÇÃO DO PRODUTO
+                                <span style="display: block; font-size: 8px; color: #ede9fe !important; font-weight: 600 !important; margin-top: 1px;">Nome, Cód. e Obs.</span>
+                            </th>
+                            <th style="padding: 8px 6px; text-align: right; color: white !important; font-weight: 950 !important; min-width: 100px; font-size: 11px;">
+                                VALOR UNITÁRIO
+                                <span style="display: block; font-size: 8px; color: #ede9fe !important; font-weight: 600 !important; margin-top: 1px;">Preço Base</span>
+                            </th>
+                            <th style="padding: 8px 6px; text-align: right; color: white !important; font-weight: 950 !important; border-top-right-radius: 6px; border-bottom-right-radius: 6px; min-width: 110px; font-size: 11px;">
+                                VALOR TOTAL
+                                <span style="display: block; font-size: 8px; color: #ede9fe !important; font-weight: 600 !important; margin-top: 1px;">Líquido do Item</span>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="pdf-items-body" style="color: #1f2937 !important;">
@@ -624,14 +709,14 @@
             </div>
 
             <!-- Parte Inferior do PDF -->
-            <div>
+            <div style="margin-top: auto;">
                 <!-- Informações e Resumo Financeiro -->
-                <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #cbd5e1; padding-top: 15px;">
-                    <div style="font-size: 10px; max-width: 60%; color: #4b5563 !important; line-height: 1.4;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #cbd5e1; padding-top: 10px;">
+                    <div style="font-size: 10px; max-width: 60%; color: #4b5563 !important; line-height: 1.3;">
                         <strong>Condições de Comercialização:</strong>
-                        <p style="margin: 3px 0;">* Proposta comercial válida por 5 (cinco) dias corridos a partir da emissão.</p>
-                        <p style="margin: 3px 0;">* Sincronização automática das imagens e referências do estoque.</p>
-                        <p style="margin: 3px 0;">* Condição de Pagamento: <span id="pdf-payment-display" style="font-weight: 750; color: #7c3aed !important;">À Vista</span></p>
+                        <p style="margin: 2px 0;">* Proposta comercial válida por 5 (cinco) dias corridos a partir da emissão.</p>
+                        <p style="margin: 2px 0;">* Sincronização automática das imagens e referências do estoque.</p>
+                        <p style="margin: 2px 0;">* Condição de Pagamento: <span id="pdf-payment-display" style="font-weight: 750; color: #4f46e5 !important;">À Vista</span></p>
                     </div>
                     <div style="width: 240px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; font-size: 11px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px; color: #4b5563 !important;">
@@ -644,13 +729,13 @@
                         </div>
                         <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 900; border-top: 1px dashed #cbd5e1; padding-top: 5px; margin-top: 5px; color: #1e1b4b !important;">
                             <span>Valor Líquido:</span>
-                            <span id="pdf-total" style="color: #7c3aed !important;">R$ 0,00</span>
+                            <span id="pdf-total" style="color: #4f46e5 !important;">R$ 0,00</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Assinaturas Formais -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; text-align: center; font-size: 10px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 30px; text-align: center; font-size: 10px;">
                     <div>
                         <div style="border-top: 1px solid #9ca3af; margin-bottom: 4px; width: 85%; margin-left: auto; margin-right: auto;"></div>
                         <strong id="pdf-signature-client-label" style="text-transform: uppercase;">CLIENTE CONTRATANTE</strong>
@@ -664,7 +749,7 @@
                 </div>
 
                 <!-- Rodapé -->
-                <div style="text-align: center; font-size: 9px; color: #9ca3af !important; border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 25px;">
+                <div style="text-align: center; font-size: 9px; color: #9ca3af !important; border-top: 1px solid #f1f5f9; padding-top: 8px; margin-top: 15px;">
                     <p>Documento oficial gerado eletronicamente. LOOP Orçamentos | Obrigado pela preferência!</p>
                 </div>
             </div>
@@ -672,12 +757,27 @@
     </div>
 
     <!-- RODAPÉ DA APLICAÇÃO -->
-    <footer class="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 py-4 text-center text-xs text-zinc-400">
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 py-3 text-center text-xs text-zinc-400 shrink-0">
         <p>© 2026 LOOP. Design Minimalista e Inteligência Comercial Aplicada.</p>
     </footer>
 
-    <!-- LÓGICA CORE DO APP -->
     <script>
+        // Formata preços para o padrão brasileiro R$ 1.250,50 (com separadores de milhares)
+        function formatBRL(value) {
+            return parseFloat(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        // Formata quantidades com pontos de milhar e frações decimais (Ex: 1.000 ou 10.000 ou 15,5)
+        function formatNumber(value) {
+            const num = parseFloat(value);
+            if (isNaN(num)) return "0";
+            if (num % 1 === 0) {
+                return num.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            } else {
+                return num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 3 });
+            }
+        }
+
         let localProducts = [
             { code: "L-201", name: "Tecido Linho Fino", price: 42.50, stock: 120, category: "Matéria-prima", unit: "m", image: "https://images.unsplash.com/photo-1544816155-12df9643f363?w=200", description: "Fibras naturais de linho de alta qualidade" },
             { code: "L-202", name: "Cabo de Aço Inox (M)", price: 18.90, stock: 350.5, category: "Fios", unit: "m", image: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=200", description: "Cabo de aço inoxidável trançado super resistente" },
@@ -691,6 +791,7 @@
         let base64ImageToUpload = "";
         let base64Logo = "";
         let currentTheme = 'light';
+        let confirmPromiseResolver = null;
 
         // Inicialização do Aplicativo
         window.onload = function() {
@@ -701,7 +802,6 @@
             updateCalculations();
         };
 
-        // Alternador de Temas (Sem vazamentos de estilo)
         function initTheme() {
             const savedTheme = localStorage.getItem('loop_theme') || 'light';
             setTheme(savedTheme);
@@ -717,45 +817,38 @@
             localStorage.setItem('loop_theme', theme);
             
             const htmlEl = document.documentElement;
+            const darkIcon = document.getElementById('theme-icon-dark');
+            const lightIcon = document.getElementById('theme-icon-light');
+
             if (theme === 'dark') {
                 htmlEl.classList.add('dark');
+                if (darkIcon) darkIcon.classList.remove('hidden');
+                if (lightIcon) lightIcon.classList.add('hidden');
             } else {
                 htmlEl.classList.remove('dark');
+                if (darkIcon) darkIcon.classList.add('hidden');
+                if (lightIcon) lightIcon.classList.remove('hidden');
             }
         }
 
-        // Navegação de Abas Fluida
         function switchTab(tabId) {
             document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.className = "nav-btn flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold transition-all text-zinc-500 hover:text-zinc-850 dark:text-zinc-400 dark:hover:text-zinc-200";
+                btn.classList.remove('active', 'text-brand-700', 'bg-white', 'shadow-xs', 'border', 'border-zinc-200/50', 'dark:bg-zinc-800', 'dark:text-brand-300', 'dark:border-zinc-700');
+                btn.classList.add('text-zinc-500', 'dark:text-zinc-400');
             });
 
-            const targetNav = document.getElementById(`btn-${tabId}`);
+            const targetNav = document.getElementById(`nav-${tabId}`);
             if (targetNav) {
-                targetNav.className = "nav-btn active flex items-center gap-2 px-4 py-1.5 rounded-md text-xs font-semibold transition-all text-brand-700 bg-white shadow-xs dark:bg-zinc-900 dark:text-brand-400";
+                targetNav.classList.add('active', 'text-brand-700', 'bg-white', 'shadow-xs', 'border', 'border-zinc-200/50', 'dark:bg-zinc-800', 'dark:text-brand-300', 'dark:border-zinc-700');
+                targetNav.classList.remove('text-zinc-500', 'dark:text-zinc-400');
             }
 
-            // Repetir para o mobile
-            document.querySelectorAll('.md\\:hidden button').forEach(btn => {
-                btn.className = "flex flex-col items-center gap-0.5 text-zinc-500 dark:text-zinc-400";
-            });
-            const activeMobileBtn = document.getElementById(`m-btn-${tabId}`);
-            if (activeMobileBtn) activeMobileBtn.className = "flex flex-col items-center gap-0.5 text-brand-600 dark:text-brand-400 font-bold";
-
             const panes = document.querySelectorAll('.tab-pane');
-            panes.forEach(pane => {
-                pane.classList.add('hidden');
-                pane.classList.remove('opacity-100');
-                pane.classList.add('opacity-0');
-            });
+            panes.forEach(pane => pane.classList.remove('active'));
 
             const targetPane = document.getElementById(`tab-${tabId}`);
             if (targetPane) {
-                targetPane.classList.remove('hidden');
-                setTimeout(() => {
-                    targetPane.classList.remove('opacity-0');
-                    targetPane.classList.add('opacity-100');
-                }, 50);
+                targetPane.classList.add('active');
             }
 
             if (tabId !== 'cadastro') {
@@ -763,7 +856,6 @@
             }
         }
 
-        // Notificações Personalizadas Toast
         function showToast(message) {
             const toast = document.getElementById('toast');
             const msgEl = document.getElementById('toast-message');
@@ -774,22 +866,21 @@
             }, 3000);
         }
 
-        // Armazenamento Local e Identidades do Orçamento
         function loadConfigurations() {
             const scriptUrl = localStorage.getItem('loop_script_url') || "";
             const folderId = localStorage.getItem('loop_folder_id') || "";
             base64Logo = localStorage.getItem('loop_logo_base64') || "";
 
             const companyName = localStorage.getItem('loop_pdf_company_name') || "LOOP ORÇAMENTOS";
-            const companySlogan = localStorage.getItem('loop_pdf_company_slogan') || "SOLUÇÕES COMERCIAIS INTEGRADAS";
+            const companySlogan = localStorage.getItem('loop_pdf_company_slogan') || "SOLUÇÕES COMERCIAIS";
 
             document.getElementById('config-script-url').value = scriptUrl;
             document.getElementById('config-folder-id').value = folderId;
             document.getElementById('config-company-name').value = companyName;
             document.getElementById('config-company-slogan').value = companySlogan;
 
-            document.getElementById('header-company-name').innerText = companyName;
-            document.getElementById('header-company-slogan').innerText = companySlogan;
+            document.getElementById('nav-header-title').innerText = companyName;
+            document.getElementById('nav-header-slogan').innerText = companySlogan;
 
             if (base64Logo) {
                 document.getElementById('logo-preview').src = base64Logo;
@@ -800,14 +891,16 @@
             const scriptUrl = document.getElementById('config-script-url').value.trim();
             const folderId = document.getElementById('config-folder-id').value.trim();
             const companyName = document.getElementById('config-company-name').value.trim() || "LOOP ORÇAMENTOS";
-            const companySlogan = document.getElementById('config-company-slogan').value.trim() || "SOLUÇÕES COMERCIAIS INTEGRADAS";
+            const companySlogan = document.getElementById('config-company-slogan').value.trim() || "SOLUÇÕES COMERCIAIS";
 
             localStorage.setItem('loop_script_url', scriptUrl);
             localStorage.setItem('loop_folder_id', folderId);
             localStorage.setItem('loop_pdf_company_name', companyName);
             localStorage.setItem('loop_pdf_company_slogan', companySlogan);
 
-            loadConfigurations();
+            document.getElementById('nav-header-title').innerText = companyName;
+            document.getElementById('nav-header-slogan').innerText = companySlogan;
+
             showToast("Configurações atualizadas!");
             syncData();
         }
@@ -826,7 +919,6 @@
             reader.readAsDataURL(file);
         }
 
-        // Sincronizar Informações com a API
         async function syncData() {
             const scriptUrl = localStorage.getItem('loop_script_url');
             const syncIcon = document.getElementById('sync-icon');
@@ -836,7 +928,7 @@
 
             if (!scriptUrl) {
                 statusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> Modo Local`;
-                statusBadge.className = "flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-full text-[11px] font-medium border border-amber-200/50 dark:border-amber-900/30";
+                statusBadge.className = "flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 px-3 py-1 rounded-full text-[11px] font-semibold border border-zinc-200/60 dark:border-zinc-800";
                 renderStockTable(localProducts);
                 renderCategoryPills(localProducts);
                 if (syncIcon) syncIcon.classList.remove('animate-spin');
@@ -851,14 +943,14 @@
                     localProducts = res.data;
                     renderStockTable(localProducts);
                     renderCategoryPills(localProducts);
-                    showToast("Planilha sincronizada!");
+                    showToast("Estoque sincronizado!");
 
-                    statusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Conectado`;
-                    statusBadge.className = "flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 px-3 py-1 rounded-full text-[11px] font-medium border border-emerald-200/50 dark:border-emerald-900/30";
+                    statusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Sincronizado`;
+                    statusBadge.className = "flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 px-3 py-1 rounded-full text-[11px] font-semibold border border-zinc-200/60 dark:border-zinc-800";
                 }
             } catch (err) {
-                console.error("Erro na leitura da API:", err);
-                showToast("Erro de sincronização. Carregando dados locais.");
+                console.error("Falha na sincronização:", err);
+                showToast("Falha de conexão. Executando em modo local.");
                 renderStockTable(localProducts);
                 renderCategoryPills(localProducts);
             } finally {
@@ -866,7 +958,6 @@
             }
         }
 
-        // Renderizar Estoque
         function renderStockTable(products) {
             const tbody = document.getElementById('stock-table-body');
             tbody.innerHTML = "";
@@ -884,13 +975,16 @@
                     <td class="py-3 px-4 font-mono font-bold text-brand-600">${item.code}</td>
                     <td class="py-3 px-4 font-bold text-slate-800 dark:text-zinc-100">${item.name}</td>
                     <td class="py-3 px-4 text-zinc-400 font-medium">${item.category || "Geral"}</td>
-                    <td class="py-3 px-4 font-bold text-slate-900 dark:text-zinc-200">R$ ${parseFloat(item.price).toFixed(2)}</td>
+                    <td class="py-3 px-4 font-bold text-slate-900 dark:text-zinc-200">${formatBRL(item.price)}</td>
                     <td class="py-3 px-4 text-center"><span class="bg-zinc-100 text-zinc-600 text-[10px] px-2 py-0.5 rounded uppercase font-bold dark:bg-zinc-800 dark:text-zinc-300">${unit}</span></td>
-                    <td class="py-3 px-4 font-semibold text-zinc-500 dark:text-zinc-400">${item.stock} <span class="text-[10px] uppercase">${unit}</span></td>
+                    <td class="py-3 px-4 font-semibold text-zinc-500 dark:text-zinc-400">${formatNumber(item.stock)} <span class="text-[10px] uppercase">${unit}</span></td>
                     <td class="py-3 px-4 text-right">
                         <div class="inline-flex items-center gap-1.5">
                             <button onclick="openEditModal('${item.code}')" class="text-zinc-400 hover:text-brand-600 p-1.5 transition-colors cursor-pointer" title="Editar Produto">
                                 <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button onclick="deleteProduct('${item.code}')" class="text-zinc-400 hover:text-rose-600 p-1.5 transition-colors cursor-pointer" title="Excluir Produto">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                             </button>
                             <button onclick="addToCart('${item.code}')" class="bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/25 dark:hover:bg-brand-900/30 text-brand-700 dark:text-brand-400 px-3 py-1.5 rounded-lg text-xs font-bold transition-all inline-flex items-center gap-1 border border-brand-200/50 dark:border-brand-900/40 cursor-pointer">
                                 <i data-lucide="plus" class="w-3 h-3"></i> Adicionar
@@ -903,7 +997,6 @@
             lucide.createIcons();
         }
 
-        // Pills de Categorias
         function renderCategoryPills(products) {
             const pillContainer = document.getElementById('category-pills');
             pillContainer.innerHTML = "";
@@ -921,11 +1014,14 @@
 
         function filterByCategory(category) {
             const input = document.getElementById('search-input');
-            input.value = (category === "Todos") ? "" : category;
+            if (category === "Todos") {
+                input.value = "";
+            } else {
+                input.value = category;
+            }
             searchProducts();
         }
 
-        // Pesquisa no Orçador
         function searchProducts() {
             const query = document.getElementById('search-input').value.toLowerCase().trim();
             const results = document.getElementById('search-results');
@@ -963,7 +1059,7 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="font-extrabold text-xs text-slate-900 dark:text-white mr-2">R$ ${parseFloat(item.price).toFixed(2)}</span>
+                        <span class="font-extrabold text-xs text-slate-900 dark:text-white mr-2">${formatBRL(item.price)}</span>
                         <button onclick="openEditModal('${item.code}')" class="text-zinc-400 hover:text-brand-600 p-1.5 rounded-lg transition-all cursor-pointer" title="Editar Produto">
                             <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
                         </button>
@@ -977,7 +1073,6 @@
             lucide.createIcons();
         }
 
-        // Modal de Ajustes
         function openEditModal(code) {
             const product = localProducts.find(p => p.code === code);
             if (!product) return;
@@ -996,7 +1091,8 @@
         }
 
         function closeEditModal() {
-            document.getElementById('edit-product-modal').classList.add('hidden');
+            const modal = document.getElementById('edit-product-modal');
+            modal.classList.add('hidden');
         }
 
         async function handleProductEditSubmit(event) {
@@ -1034,14 +1130,19 @@
 
             if (!scriptUrl) {
                 finalizeEditView();
-                showToast("Modificado localmente!");
+                showToast("Dados do produto atualizados!");
                 return;
             }
 
             try {
                 const apiBody = {
                     action: "update",
-                    code, name, price, stock, category, unit
+                    code: code,
+                    name: name,
+                    price: price,
+                    stock: stock,
+                    category: category,
+                    unit: unit
                 };
 
                 await fetch(scriptUrl, {
@@ -1051,13 +1152,16 @@
                     body: JSON.stringify(apiBody)
                 });
 
-                showToast("Produto atualizado na Planilha Google!");
+                showToast("Alterações sincronizadas na planilha!");
                 finalizeEditView();
 
-                setTimeout(() => { syncData(); }, 1200);
+                setTimeout(() => {
+                    syncData();
+                }, 1500);
+
             } catch (err) {
-                console.error(err);
-                showToast("Erro na nuvem, salvo localmente.");
+                console.error("Erro na sincronia da edição:", err);
+                showToast("Falha de conexão. Alteração salva localmente.");
                 finalizeEditView();
             }
         }
@@ -1073,7 +1177,61 @@
             renderCategoryPills(localProducts);
         }
 
-        // Fluxo de Negociação de Itens
+        function deleteProduct(code) {
+            const product = localProducts.find(p => p.code === code);
+            if (!product) return;
+
+            document.getElementById('confirm-title').innerText = "Excluir Item do Estoque?";
+            document.getElementById('confirm-body').innerText = `Você realmente deseja remover permanentemente "${product.name}" (${product.code}) do estoque e da planilha?`;
+            
+            const dialog = document.getElementById('confirm-dialog');
+            dialog.classList.remove('hidden');
+
+            return new Promise((resolve) => {
+                confirmPromiseResolver = async (confirmed) => {
+                    dialog.classList.add('hidden');
+                    if (confirmed) {
+                        localProducts = localProducts.filter(p => p.code !== code);
+                        cart = cart.filter(item => item.code !== code);
+
+                        showToast("Removendo produto...");
+                        renderStockTable(localProducts);
+                        renderCategoryPills(localProducts);
+                        updateCalculations();
+
+                        const scriptUrl = localStorage.getItem('loop_script_url');
+                        if (scriptUrl) {
+                            try {
+                                await fetch(scriptUrl, {
+                                    method: "POST",
+                                    mode: "no-cors",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ action: "delete", code: code })
+                                });
+                                showToast("Produto deletado da Planilha Google!");
+                                setTimeout(() => {
+                                    syncData();
+                                }, 1500);
+                            } catch(err) {
+                                console.error("Falha ao deletar na nuvem:", err);
+                                showToast("Erro ao sincronizar exclusão. Excluído localmente.");
+                            }
+                        } else {
+                            showToast("Produto removido localmente.");
+                        }
+                    }
+                    resolve(confirmed);
+                };
+            });
+        }
+
+        function resolveConfirmation(val) {
+            if (confirmPromiseResolver) {
+                confirmPromiseResolver(val);
+                confirmPromiseResolver = null;
+            }
+        }
+
         function addToCart(code) {
             const product = localProducts.find(p => p.code === code);
             if (!product) return;
@@ -1083,23 +1241,24 @@
             const step = (unit === 'un') ? 1 : 0.5;
 
             if (existing) {
-                if (existing.quantity >= product.stock) {
-                    showToast("Quantidade do produto excede estoque!");
-                    return;
-                }
                 existing.quantity = parseFloat((existing.quantity + step).toFixed(2));
             } else {
-                cart.push({ ...product, quantity: step, discountItem: 0, itemDescription: "" });
+                cart.push({ 
+                    ...product, 
+                    quantity: step,
+                    discountItem: 0,
+                    itemDescription: ""
+                });
             }
 
             updateCalculations();
-            showToast(`${product.name} adicionado!`);
+            showToast(`${product.name} adicionado ao orçamento!`);
         }
 
         function removeCartItem(code) {
             cart = cart.filter(item => item.code !== code);
             updateCalculations();
-            showToast("Item excluído.");
+            showToast("Item removido do orçamento.");
         }
 
         function updateCartQty(code, val) {
@@ -1110,12 +1269,7 @@
             if (isNaN(numericVal) || numericVal <= 0) {
                 cart = cart.filter(p => p.code !== code);
             } else {
-                if (numericVal > item.stock) {
-                    showToast(`Aviso: Máximo em estoque é ${item.stock}!`);
-                    item.quantity = item.stock;
-                } else {
-                    item.quantity = numericVal;
-                }
+                item.quantity = numericVal;
             }
             updateCalculations();
         }
@@ -1123,27 +1277,26 @@
         function updateItemDirectDiscount(code, val) {
             const item = cart.find(p => p.code === code);
             if (!item) return;
-            let disc = parseInt(val) || 0;
+
+            let disc = parseFloat(val) || 0;
             if (disc < 0) disc = 0;
             if (disc > 100) disc = 100;
+
             item.discountItem = disc;
             updateCalculations();
         }
 
-        // Nova anotação por item que preenche a coluna DESCRIÇÃO no PDF
         function updateItemCustomDescription(code, val) {
             const item = cart.find(p => p.code === code);
-            if (!item) return;
-            item.itemDescription = val;
+            if (item) {
+                item.itemDescription = val;
+            }
         }
 
         function clearCart() {
-            if (cart.length === 0) return;
-            if (confirm("Deseja mesmo esvaziar todos os itens do orçamento atual?")) {
-                cart = [];
-                updateCalculations();
-                showToast("Orçamento esvaziado.");
-            }
+            cart = [];
+            updateCalculations();
+            showToast("Orçamento esvaziado.");
         }
 
         function setPaymentMethod(method) {
@@ -1153,18 +1306,17 @@
             const instContainer = document.getElementById('installments-container');
 
             if (method === 'a_vista') {
-                btnVista.className = "py-2.5 px-3 rounded-lg text-xs font-bold border transition-all text-center bg-brand-50 border-brand-500 text-brand-700 dark:bg-brand-950/20 dark:border-brand-600 dark:text-brand-300";
-                btnParcelado.className = "py-2.5 px-3 rounded-lg text-xs font-bold border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-950 transition-all text-center";
+                btnVista.className = "py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center bg-brand-50 border-brand-500 text-brand-700 dark:bg-brand-950/20 dark:border-brand-600 dark:text-brand-300 cursor-pointer";
+                btnParcelado.className = "py-2 px-3 rounded-lg text-xs font-bold border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-850 transition-all text-center cursor-pointer";
                 instContainer.classList.add('hidden');
             } else {
-                btnParcelado.className = "py-2.5 px-3 rounded-lg text-xs font-bold border transition-all text-center bg-brand-50 border-brand-500 text-brand-700 dark:bg-brand-950/20 dark:border-brand-600 dark:text-brand-300";
-                btnVista.className = "py-2.5 px-3 rounded-lg text-xs font-bold border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 bg-white dark:bg-zinc-950 transition-all text-center";
+                btnParcelado.className = "py-2 px-3 rounded-lg text-xs font-bold border transition-all text-center bg-brand-50 border-brand-500 text-brand-700 dark:bg-brand-950/20 dark:border-brand-600 dark:text-brand-300 cursor-pointer";
+                btnVista.className = "py-2 px-3 rounded-lg text-xs font-bold border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-850 transition-all text-center cursor-pointer";
                 instContainer.classList.remove('hidden');
             }
             updateCalculations();
         }
 
-        // Cálculos e Rendering de Itens no Carrinho (COM CLASSES TEMA ESCURO CORRIGIDAS)
         function updateCalculations() {
             const cartContainer = document.getElementById('cart-items');
             const cartCount = document.getElementById('cart-count');
@@ -1200,11 +1352,11 @@
                 const inputStep = (unit === 'un') ? '1' : '0.1';
 
                 const div = document.createElement('div');
-                div.className = "cart-item-card flex flex-col gap-2 p-3.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 rounded-xl";
+                div.className = "cart-item-card flex flex-col gap-2 p-3.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 rounded-xl shadow-xs shrink-0";
                 div.innerHTML = `
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2.5">
-                            <div class="w-12 h-12 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-850 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shadow-xs">
+                            <div class="w-14 h-14 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center shadow-xs">
                                 <img src="${item.image || 'https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'}" onerror="this.src='https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'" class="w-full h-full object-cover">
                             </div>
                             <div>
@@ -1213,7 +1365,7 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-1.5">
-                            <input type="number" step="${inputStep}" min="0.1" value="${item.quantity}" onchange="updateCartQty('${item.code}', this.value)" class="w-14 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded p-1 text-center text-xs font-bold text-slate-800 dark:text-zinc-200 focus:outline-none">
+                            <input type="number" step="${inputStep}" min="0.1" value="${item.quantity}" onchange="updateCartQty('${item.code}', this.value)" class="w-16 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded p-1 text-center text-xs font-bold text-slate-800 dark:text-zinc-200 focus:outline-none">
                             <button onclick="removeCartItem('${item.code}')" class="text-zinc-400 hover:text-rose-600 p-1 transition-colors cursor-pointer">
                                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                             </button>
@@ -1235,7 +1387,6 @@
 
             lucide.createIcons();
 
-            // Desconto do range do gestor
             const globalDiscountPercent = parseFloat(document.getElementById('discount-range').value);
             document.getElementById('discount-display').innerText = `${globalDiscountPercent}%`;
 
@@ -1251,15 +1402,14 @@
             } else {
                 const installments = parseInt(document.getElementById('installments-select').value);
                 const valParcela = totalLiquido / installments;
-                detailsText = `${installments}x sem juros de R$ ${valParcela.toFixed(2)}`;
+                detailsText = `${installments}x sem juros de ${formatBRL(valParcela)}`;
             }
 
-            document.getElementById('summary-subtotal').innerText = `R$ ${subtotalBruto.toFixed(2)}`;
-            document.getElementById('summary-total').innerText = `R$ ${totalLiquido.toFixed(2)}`;
+            document.getElementById('summary-subtotal').innerText = formatBRL(subtotalBruto);
+            document.getElementById('summary-total').innerText = formatBRL(totalLiquido);
             document.getElementById('payment-details-text').innerText = detailsText;
         }
 
-        // Módulo de Captura de Mídia / Câmera
         let streamPointer = null;
 
         async function startCamera() {
@@ -1285,10 +1435,10 @@
                 btnToggle.innerText = "Desligar Câmera";
                 btnToggle.onclick = stopCamera;
                 btnCapture.classList.remove('hidden');
-                showToast("Câmera conectada!");
+                showToast("Câmera do aparelho ligada!");
             } catch (err) {
-                console.error(err);
-                showToast("Câmera indisponível. Carregue um arquivo local.");
+                console.error("Falha ao inicializar câmera:", err);
+                showToast("Hardware inacessível. Suba um arquivo.");
             }
         }
 
@@ -1341,12 +1491,11 @@
                 preview.classList.remove('hidden');
                 placeholder.classList.add('hidden');
                 stopCamera();
-                showToast("Imagem importada com sucesso!");
+                showToast("Foto anexada com sucesso!");
             };
             reader.readAsDataURL(file);
         }
 
-        // Submeter Cadastro de Novo Produto
         async function handleProductSubmit(event) {
             event.preventDefault();
 
@@ -1362,11 +1511,16 @@
 
             const btnSubmit = document.getElementById('btn-submit-product');
             btnSubmit.disabled = true;
-            btnSubmit.innerHTML = `<i data-lucide="refresh-cw" class="w-4 h-4 animate-spin"></i> Registrando produto...`;
+            btnSubmit.innerHTML = `<i data-lucide="refresh-cw" class="w-4 h-4 animate-spin"></i> Registrando...`;
             lucide.createIcons();
 
             const payloadProduct = {
-                code, name, price, stock, category, unit,
+                code,
+                name,
+                price,
+                stock,
+                category,
+                unit,
                 image: base64ImageToUpload || "https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO"
             };
 
@@ -1374,17 +1528,22 @@
                 localProducts.unshift(payloadProduct);
                 renderStockTable(localProducts);
                 renderCategoryPills(localProducts);
-                showToast("Salvo offline na base local!");
+                showToast("Produto inserido offline!");
                 resetProductForm();
-                switchTab('estoque');
+                switchTab('produtos');
                 return;
             }
 
             try {
                 const apiBody = {
                     action: "create",
-                    code, name, price, stock, category, unit,
-                    folderId,
+                    code: code,
+                    name: name,
+                    price: price,
+                    stock: stock,
+                    category: category,
+                    unit: unit,
+                    folderId: folderId,
                     imageName: `${code}_IMG.jpg`,
                     imageBase64: base64ImageToUpload ? base64ImageToUpload.split(',')[1] : ""
                 };
@@ -1396,21 +1555,22 @@
                     body: JSON.stringify(apiBody)
                 });
 
-                showToast("Produto inserido na Planilha Google!");
+                showToast("Produto registrado na planilha!");
                 resetProductForm();
                 
                 setTimeout(() => {
                     syncData();
-                    switchTab('estoque');
-                }, 1200);
+                    switchTab('produtos');
+                }, 1500);
+
             } catch (err) {
-                console.error(err);
-                showToast("Conexão falhou. Salvando na base de dados local.");
+                console.error("Erro na sincronia do novo produto:", err);
+                showToast("Sem conexão. Guardado localmente no catálogo.");
                 localProducts.unshift(payloadProduct);
                 renderStockTable(localProducts);
                 renderCategoryPills(localProducts);
                 resetProductForm();
-                switchTab('estoque');
+                switchTab('produtos');
             }
         }
 
@@ -1427,7 +1587,6 @@
             lucide.createIcons();
         }
 
-        // MOTOR REPROJETADO DE GERAÇÃO DO PDF EM FOLHA A4 ÚNICA SÓLIDA (Sem quebras)
         function generatePDF() {
             if (cart.length === 0) {
                 showToast("Adicione produtos antes de gerar o PDF!");
@@ -1437,7 +1596,7 @@
             const clientName = document.getElementById('client-name').value.trim() || "Consumidor Final";
             const clientMetragem = document.getElementById('client-metragem').value.trim() || "Não informada";
             const companyName = localStorage.getItem('loop_pdf_company_name') || "LOOP ORÇAMENTOS";
-            const companySlogan = localStorage.getItem('loop_pdf_company_slogan') || "SOLUÇÕES COMERCIAIS INTEGRADAS";
+            const companySlogan = localStorage.getItem('loop_pdf_company_slogan') || "SOLUÇÕES COMERCIAIS";
 
             // Injetar dados básicos de rodapé e topo
             document.getElementById('pdf-company-title').innerText = companyName.toUpperCase();
@@ -1457,28 +1616,42 @@
                 pdfLogo.style.display = 'none';
             }
 
-            // Injetar linhas na tabela (COD, PRODUTOS, IMAGEM DO PRODUTO, METRAGEM, DESCRIÇÃO, QTD, PREÇO, UN. TOTAL)
+            // Forçar parametrização de segurança rígida da folha A4 em pixels
+            const pdfTemplate = document.getElementById('pdf-template');
+            pdfTemplate.style.height = "1105px";
+            pdfTemplate.style.maxHeight = "1105px";
+            pdfTemplate.style.padding = "24px 36px 24px 36px";
+
+            // Injetar linhas na tabela do PDF
             const tbody = document.getElementById('pdf-items-body');
             tbody.innerHTML = cart.map(item => {
                 const subTotalItem = item.price * item.quantity;
                 const totalItemComDesconto = subTotalItem - (subTotalItem * (item.discountItem / 100));
                 
                 const unit = item.unit || 'un';
-                const descText = item.itemDescription ? item.itemDescription : (item.description || item.category || "-");
-                const discLabel = item.discountItem > 0 ? `<br><span style="color:#16a34a; font-weight:bold;">(-${item.discountItem}%)</span>` : '';
+                const formattedQty = formatNumber(item.quantity);
+                const unitLabel = unit === 'm²' ? 'm²' : unit.toUpperCase();
+                const discLabel = item.discountItem > 0 ? `<br><span style="color:#16a34a; font-weight:bold; font-size: 9px;">(-${item.discountItem}%)</span>` : '';
 
                 return `
                     <tr style="border-bottom: 1px solid #e4e4e7;">
-                        <td style="padding: 8px; font-weight: bold; font-family: monospace;">${item.code}</td>
-                        <td style="padding: 8px; font-weight: bold;">${item.name}</td>
-                        <td style="padding: 4px; text-align: center;">
-                            <img src="${item.image || 'https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'}" style="width: 55px; height: 55px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block;">
+                        <td style="padding: 4px; text-align: center; font-weight: 800; font-size: 11px;">
+                            ${formattedQty} <span style="font-size: 9px; color: #4b5563 !important; font-weight: 600;">${unitLabel}</span>
                         </td>
-                        <td style="padding: 8px; text-align: center; text-transform: uppercase; font-weight: bold;">${unit}</td>
-                        <td style="padding: 8px; font-style: italic; font-size: 9px; max-width: 140px; word-wrap: break-word;">${descText}</td>
-                        <td style="padding: 8px; text-align: center; font-weight: bold;">${item.quantity}</td>
-                        <td style="padding: 8px; text-align: right;">R$ ${parseFloat(item.price).toFixed(2)}</td>
-                        <td style="padding: 8px; text-align: right; font-weight: bold;">R$ ${totalItemComDesconto.toFixed(2)}${discLabel}</td>
+                        <td style="padding: 2px 4px; text-align: center;">
+                            <img src="${item.image || 'https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block;">
+                        </td>
+                        <td style="padding: 4px; text-align: left; max-width: 250px; word-wrap: break-word;">
+                            <div style="font-weight: bold; font-size: 11px; color: #111827 !important;">${item.name}</div>
+                            <div style="font-size: 8px; color: #6b7280 !important; font-family: monospace; margin-top: 2px;">CÓD: ${item.code}</div>
+                            ${item.itemDescription ? `<div style="font-size: 9px; color: #4f46e5 !important; font-style: italic; margin-top: 4px; font-weight: 500;">Obs: ${item.itemDescription}</div>` : ''}
+                        </td>
+                        <td style="padding: 4px; text-align: right; font-size: 11px; font-weight: 500;">
+                            ${formatBRL(item.price)}
+                        </td>
+                        <td style="padding: 4px; text-align: right; font-weight: bold; font-size: 11px;">
+                            ${formatBRL(totalItemComDesconto)}${discLabel}
+                        </td>
                     </tr>
                 `;
             }).join('');
@@ -1508,12 +1681,12 @@
                 paymentText = `PAGAMENTO PARCELADO EM ${instVal}X NO CARTÃO`;
             }
 
-            document.getElementById('pdf-subtotal').innerText = `R$ ${subtotalGeral.toFixed(2)}`;
-            document.getElementById('pdf-discount').innerText = `- R$ ${totalDescontosCalculados.toFixed(2)} (${discountPercent}%)`;
-            document.getElementById('pdf-total').innerText = `R$ ${finalTotal.toFixed(2)}`;
+            document.getElementById('pdf-subtotal').innerText = formatBRL(subtotalGeral);
+            document.getElementById('pdf-discount').innerText = `- ${formatBRL(totalDescontosCalculados)} (${discountPercent}%)`;
+            document.getElementById('pdf-total').innerText = formatBRL(finalTotal);
             document.getElementById('pdf-payment-display').innerText = paymentText;
 
-            // Congela temporariamente o Tema Escuro durante a compilação do canvas
+            // Congelar temporariamente o Tema Escuro
             const isDarkActive = document.documentElement.classList.contains('dark');
             if (isDarkActive) {
                 document.documentElement.classList.remove('dark');
@@ -1521,6 +1694,7 @@
 
             const element = document.getElementById('pdf-template');
             
+            // Forçando scrollX: 0 e scrollY: 0 para blindar de vez qualquer desvio de scroll da viewport!
             const opt = {
                 margin: 0,
                 filename: `Orcamento_${clientName.replace(/\s+/g, '_')}.pdf`,
@@ -1530,7 +1704,9 @@
                     useCORS: true, 
                     dpi: 300, 
                     letterRendering: true,
-                    backgroundColor: '#ffffff'
+                    backgroundColor: '#ffffff',
+                    scrollX: 0,
+                    scrollY: 0
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
