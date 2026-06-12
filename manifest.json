@@ -4,7 +4,13 @@
   "description": "Gerenciador comercial minimalista de alta performance",
   "icons": [
     {
-      "src": "assets/logo.png",
+      "src": "assets/icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512x512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
