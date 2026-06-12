@@ -1,0 +1,18 @@
+{
+  "short_name": "LOOP",
+  "name": "LOOP - Sistema de Orçamentos",
+  "description": "Gerenciador comercial minimalista de alta performance",
+  "icons": [
+    {
+      "src": "assets/logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "index.html",
+  "background_color": "#09090b",
+  "theme_color": "#4f46e5",
+  "display": "standalone",
+  "orientation": "portrait"
+}
