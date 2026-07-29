@@ -551,7 +551,7 @@
     </main>
 
     <div id="edit-product-modal" class="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-[100] hidden">
-        <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl max-w-md w-full mx-4 shadow-2xl space-y-4">
+        <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-2xl max-w-md w-full mx-4 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
                 <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                     <i data-lucide="edit" class="text-brand-500 w-4 h-4"></i>
@@ -585,6 +585,23 @@
                     <div>
                         <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Estoque Físico</label>
                         <input type="number" step="0.01" id="edit-prod-stock" required class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-750 focus:border-brand-500 rounded-lg p-2.5 text-xs text-slate-800 dark:text-white focus:outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1.5">Fotografia do Produto</label>
+                    <div class="flex items-center gap-3 rounded-xl border border-zinc-200 dark:border-zinc-750 bg-zinc-50 dark:bg-zinc-800/50 p-2.5">
+                        <div class="w-20 h-20 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shrink-0">
+                            <img id="edit-photo-preview" src="https://placehold.co/160x160/f1f5f9/94a3b8?text=FOTO" class="w-full h-full object-cover" alt="Foto atual do produto">
+                        </div>
+                        <div class="min-w-0">
+                            <p id="edit-photo-status" class="text-[10px] text-zinc-400 mb-2">A foto atual será mantida se você não escolher outra.</p>
+                            <input type="file" id="edit-file-upload" accept="image/*" onchange="loadEditImage(event)" class="hidden">
+                            <button type="button" onclick="document.getElementById('edit-file-upload').click()" class="bg-white hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer">
+                                <i data-lucide="image-plus" class="w-3.5 h-3.5"></i>
+                                Trocar Foto
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -740,8 +757,15 @@
         let currentTheme = 'light';
         let currentPaymentMethod = 'a_vista';
         let base64ImageToUpload = "";
+        let editImageBase64 = "";
+        let editOriginalImageUrl = "";
         let base64Logo = "";
         let confirmPromiseResolver = null;
+        let imageCacheVersion = Date.now();
+
+        const IMAGE_PLACEHOLDER = "https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO";
+        const MAX_IMAGE_SIDE = 1600;
+        const MAX_IMAGE_BYTES = 1500000;
 
         // Inicialização do Aplicativo
         window.addEventListener('DOMContentLoaded', () => {
@@ -804,6 +828,141 @@
             } else {
                 return num.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 3 });
             }
+        }
+
+        function getProductImageUrl(imageUrl) {
+            const source = String(imageUrl || "").trim();
+            if (!source) return IMAGE_PLACEHOLDER;
+            if (source.startsWith("data:") || source.startsWith("blob:")) return source;
+
+            try {
+                const url = new URL(source, window.location.href);
+                if (url.hostname.includes("drive.google.com") || url.hostname.includes("googleusercontent.com")) {
+                    url.searchParams.set("_loop", imageCacheVersion);
+                }
+                return url.href;
+            } catch (error) {
+                return source;
+            }
+        }
+
+        function buildImageName(code) {
+            const safeCode = String(code || "produto")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-zA-Z0-9_-]/g, "_");
+            const randomSuffix = window.crypto && window.crypto.randomUUID
+                ? window.crypto.randomUUID().slice(0, 8)
+                : Math.random().toString(36).slice(2, 10);
+            return `${safeCode}_IMG_${Date.now()}_${randomSuffix}.jpg`;
+        }
+
+        function readFileAsImage(file) {
+            return new Promise((resolve, reject) => {
+                const objectUrl = URL.createObjectURL(file);
+                const image = new Image();
+
+                image.onload = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    resolve(image);
+                };
+                image.onerror = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    reject(new Error("Não foi possível ler a imagem selecionada."));
+                };
+                image.src = objectUrl;
+            });
+        }
+
+        function compressImageSource(source, originalWidth, originalHeight) {
+            let scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(originalWidth, originalHeight));
+            let quality = 0.86;
+            let dataUrl = "";
+
+            for (let attempt = 0; attempt < 8; attempt++) {
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.max(1, Math.round(originalWidth * scale));
+                canvas.height = Math.max(1, Math.round(originalHeight * scale));
+
+                const context = canvas.getContext("2d");
+                context.fillStyle = "#ffffff";
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.drawImage(source, 0, 0, canvas.width, canvas.height);
+
+                dataUrl = canvas.toDataURL("image/jpeg", quality);
+                const approximateBytes = Math.ceil((dataUrl.length - dataUrl.indexOf(",") - 1) * 0.75);
+                if (approximateBytes <= MAX_IMAGE_BYTES) break;
+
+                if (quality > 0.6) {
+                    quality -= 0.08;
+                } else {
+                    scale *= 0.82;
+                    quality = 0.78;
+                }
+            }
+
+            return dataUrl;
+        }
+
+        async function prepareImageFile(file) {
+            if (!file.type.startsWith("image/")) {
+                throw new Error("Selecione um arquivo de imagem válido.");
+            }
+
+            const image = await readFileAsImage(file);
+            return compressImageSource(image, image.naturalWidth, image.naturalHeight);
+        }
+
+        async function fetchRemoteProducts(scriptUrl) {
+            const separator = scriptUrl.includes("?") ? "&" : "?";
+            const response = await fetch(`${scriptUrl}${separator}action=read&_=${Date.now()}`, {
+                cache: "no-store"
+            });
+            if (!response.ok) throw new Error(`Falha HTTP ${response.status}`);
+
+            const result = await response.json();
+            if (result.status !== "success" || !Array.isArray(result.data)) {
+                throw new Error(result.message || "Resposta inválida do Apps Script.");
+            }
+            return result.data;
+        }
+
+        function applyRemoteProducts(products) {
+            imageCacheVersion = Date.now();
+            localProducts = products;
+            cart = cart.map(cartItem => {
+                const synchronizedProduct = products.find(product =>
+                    String(product.code) === String(cartItem.code)
+                );
+                return synchronizedProduct
+                    ? { ...cartItem, ...synchronizedProduct }
+                    : cartItem;
+            });
+            renderStockTable(localProducts);
+            renderCategoryPills(localProducts);
+            searchProducts();
+            updateCalculations();
+        }
+
+        function wait(milliseconds) {
+            return new Promise(resolve => setTimeout(resolve, milliseconds));
+        }
+
+        async function waitForProductSync(scriptUrl, code, isExpected, attempts = 10) {
+            for (let attempt = 0; attempt < attempts; attempt++) {
+                await wait(attempt === 0 ? 1200 : 1500);
+                try {
+                    const products = await fetchRemoteProducts(scriptUrl);
+                    const product = products.find(item => String(item.code) === String(code));
+                    if (product && isExpected(product)) {
+                        applyRemoteProducts(products);
+                        return true;
+                    }
+                } catch (error) {
+                    console.warn("Aguardando confirmação da planilha:", error);
+                }
+            }
+            return false;
         }
 
         function initTheme() {
@@ -940,18 +1099,12 @@
             }
 
             try {
-                const response = await fetch(`${scriptUrl}?action=read`);
-                const res = await response.json();
+                const products = await fetchRemoteProducts(scriptUrl);
+                applyRemoteProducts(products);
+                showToast("Estoque sincronizado!");
 
-                if (res.status === "success") {
-                    localProducts = res.data;
-                    renderStockTable(localProducts);
-                    renderCategoryPills(localProducts);
-                    showToast("Estoque sincronizado!");
-
-                    statusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Sincronizado`;
-                    statusBadge.className = "flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 px-3 py-1 rounded-full text-[11px] font-semibold border border-zinc-200/60 dark:border-zinc-800";
-                }
+                statusBadge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Sincronizado`;
+                statusBadge.className = "flex items-center gap-1.5 bg-zinc-100 dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 px-3 py-1 rounded-full text-[11px] font-semibold border border-zinc-200/60 dark:border-zinc-800";
             } catch (err) {
                 console.error("Falha na sincronização:", err);
                 showToast("Falha de conexão. Executando em modo local.");
@@ -973,7 +1126,7 @@
                 tr.innerHTML = `
                     <td class="py-3 px-4">
                         <div class="w-16 h-16 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center shadow-xs">
-                            <img src="${item.image || 'https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'}" onerror="this.src='https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'" class="w-full h-full object-cover">
+                            <img src="${getProductImageUrl(item.image)}" onerror="this.onerror=null;this.src='${IMAGE_PLACEHOLDER}'" class="w-full h-full object-cover">
                         </div>
                     </td>
                     <td class="py-3 px-4 font-mono font-bold text-brand-600">${item.code}</td>
@@ -1054,7 +1207,7 @@
                 div.innerHTML = `
                     <div class="flex items-center gap-2.5">
                         <div class="w-16 h-16 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shadow-xs">
-                            <img src="${item.image || 'https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'}" onerror="this.src='https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'" class="w-full h-full object-cover">
+                            <img src="${getProductImageUrl(item.image)}" onerror="this.onerror=null;this.src='${IMAGE_PLACEHOLDER}'" class="w-full h-full object-cover">
                         </div>
                         <div>
                             <span class="block text-[10px] font-mono font-bold text-brand-600">${item.code}</span>
@@ -1089,6 +1242,12 @@
             document.getElementById('edit-prod-category').value = product.category || "";
             document.getElementById('edit-prod-unit').value = product.unit || "un";
 
+            editImageBase64 = "";
+            editOriginalImageUrl = product.image || "";
+            document.getElementById('edit-photo-preview').src = getProductImageUrl(editOriginalImageUrl);
+            document.getElementById('edit-photo-status').innerText = "A foto atual será mantida se você não escolher outra.";
+            document.getElementById('edit-file-upload').value = "";
+
             const modal = document.getElementById('edit-product-modal');
             modal.classList.remove('hidden');
             lucide.createIcons();
@@ -1097,6 +1256,28 @@
         function closeEditModal() {
             const modal = document.getElementById('edit-product-modal');
             modal.classList.add('hidden');
+            editImageBase64 = "";
+            editOriginalImageUrl = "";
+            document.getElementById('edit-file-upload').value = "";
+        }
+
+        async function loadEditImage(event) {
+            const input = event.target;
+            const file = input.files[0];
+            if (!file) return;
+
+            try {
+                document.getElementById('edit-photo-status').innerText = "Preparando a nova foto...";
+                editImageBase64 = await prepareImageFile(file);
+                document.getElementById('edit-photo-preview').src = editImageBase64;
+                document.getElementById('edit-photo-status').innerText = "Nova foto selecionada. Ela será enviada ao confirmar.";
+                showToast("Nova foto pronta para salvar!");
+            } catch (error) {
+                console.error("Erro ao preparar a nova foto:", error);
+                showToast(error.message || "Não foi possível carregar a foto.");
+            } finally {
+                input.value = "";
+            }
         }
 
         async function handleProductEditSubmit(event) {
@@ -1108,6 +1289,10 @@
             const stock = parseFloat(document.getElementById('edit-prod-stock').value);
             const category = document.getElementById('edit-prod-category').value.trim() || "Geral";
             const unit = document.getElementById('edit-prod-unit').value;
+            const folderId = localStorage.getItem('loop_folder_id') || "";
+            const hasNewImage = Boolean(editImageBase64);
+            const newImageBase64 = editImageBase64;
+            const previousImageUrl = editOriginalImageUrl;
 
             const prodIndex = localProducts.findIndex(p => p.code === code);
             if (prodIndex !== -1) {
@@ -1116,12 +1301,14 @@
                 localProducts[prodIndex].stock = stock;
                 localProducts[prodIndex].category = category;
                 localProducts[prodIndex].unit = unit;
+                if (hasNewImage) localProducts[prodIndex].image = newImageBase64;
 
                 const cartIndex = cart.findIndex(item => item.code === code);
                 if (cartIndex !== -1) {
                     cart[cartIndex].name = name;
                     cart[cartIndex].price = price;
                     cart[cartIndex].unit = unit;
+                    if (hasNewImage) cart[cartIndex].image = newImageBase64;
                 }
             }
 
@@ -1146,7 +1333,12 @@
                     price: price,
                     stock: stock,
                     category: category,
-                    unit: unit
+                    unit: unit,
+                    folderId: folderId,
+                    imageName: hasNewImage ? buildImageName(code) : "",
+                    imageMimeType: hasNewImage ? "image/jpeg" : "",
+                    imageBase64: hasNewImage ? newImageBase64.split(',')[1] : "",
+                    previousImageUrl: previousImageUrl
                 };
 
                 await fetch(scriptUrl, {
@@ -1156,12 +1348,21 @@
                     body: JSON.stringify(apiBody)
                 });
 
-                showToast("Alterações sincronizadas na planilha!");
-                finalizeEditView();
+                const synchronized = await waitForProductSync(
+                    scriptUrl,
+                    code,
+                    product => (
+                        String(product.name) === String(name) &&
+                        (!hasNewImage || (product.image && String(product.image) !== String(previousImageUrl)))
+                    )
+                );
 
-                setTimeout(() => {
-                    syncData();
-                }, 1500);
+                finalizeEditView();
+                if (synchronized) {
+                    showToast(hasNewImage ? "Produto e nova foto salvos!" : "Alterações sincronizadas na planilha!");
+                } else {
+                    showToast("A planilha ainda não confirmou a alteração. Tente sincronizar novamente.");
+                }
 
             } catch (err) {
                 console.error("Erro na sincronia da edição:", err);
@@ -1361,7 +1562,7 @@
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2.5">
                             <div class="w-14 h-14 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center shadow-xs">
-                                <img src="${item.image || 'https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'}" onerror="this.src='https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'" class="w-full h-full object-cover">
+                                <img src="${getProductImageUrl(item.image)}" onerror="this.onerror=null;this.src='${IMAGE_PLACEHOLDER}'" class="w-full h-full object-cover">
                             </div>
                             <div>
                                 <span class="block text-xs font-bold text-slate-800 dark:text-zinc-200 truncate max-w-[130px]">${item.name}</span>
@@ -1462,32 +1663,36 @@
             btnCapture.classList.add('hidden');
         }
 
-        function takeSnapshot() {
+        async function takeSnapshot() {
             const video = document.getElementById('camera-stream');
             const preview = document.getElementById('photo-preview');
-            const canvas = document.createElement('canvas');
-            
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
 
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            if (!video.videoWidth || !video.videoHeight) {
+                showToast("A câmera ainda está iniciando. Tente novamente em instantes.");
+                return;
+            }
 
-            base64ImageToUpload = canvas.toDataURL('image/jpeg');
-            preview.src = base64ImageToUpload;
-
-            preview.classList.remove('hidden');
-            stopCamera();
-            showToast("Foto do produto capturada!");
+            try {
+                base64ImageToUpload = compressImageSource(video, video.videoWidth, video.videoHeight);
+                preview.src = base64ImageToUpload;
+                preview.classList.remove('hidden');
+                document.getElementById('media-placeholder').classList.add('hidden');
+                stopCamera();
+                showToast("Foto capturada e preparada para salvar!");
+            } catch (error) {
+                console.error("Erro ao capturar foto:", error);
+                showToast("Não foi possível preparar a foto da câmera.");
+            }
         }
 
-        function loadLocalImage(event) {
-            const file = event.target.files[0];
+        async function loadLocalImage(event) {
+            const input = event.target;
+            const file = input.files[0];
             if (!file) return;
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                base64ImageToUpload = e.target.result;
+            try {
+                showToast("Preparando a foto...");
+                base64ImageToUpload = await prepareImageFile(file);
                 const preview = document.getElementById('photo-preview');
                 const placeholder = document.getElementById('media-placeholder');
 
@@ -1495,9 +1700,13 @@
                 preview.classList.remove('hidden');
                 placeholder.classList.add('hidden');
                 stopCamera();
-                showToast("Foto anexada com sucesso!");
-            };
-            reader.readAsDataURL(file);
+                showToast("Foto otimizada e pronta para salvar!");
+            } catch (error) {
+                console.error("Erro ao preparar foto:", error);
+                showToast(error.message || "Não foi possível carregar a foto.");
+            } finally {
+                input.value = "";
+            }
         }
 
         async function handleProductSubmit(event) {
@@ -1518,6 +1727,19 @@
             btnSubmit.innerHTML = `<i data-lucide="refresh-cw" class="w-4 h-4 animate-spin"></i> Registrando...`;
             lucide.createIcons();
 
+            const duplicateCode = localProducts.some(item =>
+                String(item.code).trim().toLowerCase() === code.toLowerCase()
+            );
+            if (duplicateCode) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> Concluir Cadastro de Produto`;
+                lucide.createIcons();
+                showToast("Esse código já existe. Abra o produto e use “Trocar Foto”.");
+                return;
+            }
+
+            const hasImage = Boolean(base64ImageToUpload);
+            const imageData = base64ImageToUpload;
             const payloadProduct = {
                 code,
                 name,
@@ -1525,7 +1747,7 @@
                 stock,
                 category,
                 unit,
-                image: base64ImageToUpload || "https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO"
+                image: imageData || IMAGE_PLACEHOLDER
             };
 
             if (!scriptUrl) {
@@ -1548,8 +1770,9 @@
                     category: category,
                     unit: unit,
                     folderId: folderId,
-                    imageName: `${code}_IMG.jpg`,
-                    imageBase64: base64ImageToUpload ? base64ImageToUpload.split(',')[1] : ""
+                    imageName: hasImage ? buildImageName(code) : "",
+                    imageMimeType: hasImage ? "image/jpeg" : "",
+                    imageBase64: hasImage ? imageData.split(',')[1] : ""
                 };
 
                 await fetch(scriptUrl, {
@@ -1559,13 +1782,22 @@
                     body: JSON.stringify(apiBody)
                 });
 
-                showToast("Produto registrado na planilha!");
-                resetProductForm();
-                
-                setTimeout(() => {
-                    syncData();
+                const synchronized = await waitForProductSync(
+                    scriptUrl,
+                    code,
+                    product => !hasImage || Boolean(product.image && product.image !== IMAGE_PLACEHOLDER)
+                );
+
+                if (synchronized) {
+                    showToast(hasImage ? "Produto e foto salvos na planilha!" : "Produto registrado na planilha!");
+                    resetProductForm();
                     switchTab('produtos');
-                }, 1500);
+                } else {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> Tentar Salvar Novamente`;
+                    lucide.createIcons();
+                    showToast("A planilha não confirmou o cadastro. A foto continua no formulário.");
+                }
 
             } catch (err) {
                 console.error("Erro na sincronia do novo produto:", err);
@@ -1640,7 +1872,7 @@
                             ${formattedQty} <span style="font-size: 9px; color: #4b5563 !important; font-weight: 600;">${unitLabel}</span>
                         </td>
                         <td style="padding: 2px 4px; text-align: center;">
-                            <img src="${item.image || 'https://placehold.co/100x100/f1f5f9/94a3b8?text=FOTO'}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block;">
+                            <img src="${getProductImageUrl(item.image)}" onerror="this.onerror=null;this.src='${IMAGE_PLACEHOLDER}'" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block;">
                         </td>
                         <td style="padding: 4px; text-align: left; max-width: 250px; word-wrap: break-word;">
                             <div style="font-weight: bold; font-size: 11px; color: #111827 !important;">${item.name}</div>
