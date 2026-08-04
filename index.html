@@ -846,6 +846,54 @@
             }
         }
 
+        const printImageCache = new Map();
+
+        function extractDriveFileId(source) {
+            try {
+                const url = new URL(source, window.location.href);
+                const idParam = url.searchParams.get("id");
+                if (idParam) return idParam;
+                const pathMatch = url.pathname.match(/\/d\/([^/]+)/);
+                return pathMatch ? pathMatch[1] : null;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        // Para exibir na tela, um link do Drive funciona direto. Mas o gerador de
+        // PDF (html2canvas) precisa ler os pixels via CORS, o que o Drive não
+        // libera para hotlink — por isso a foto salva normalmente, porém sai em
+        // branco na folha impressa. Aqui convertemos a foto para base64 através
+        // do próprio Apps Script antes de montar o PDF, contornando o bloqueio.
+        async function resolvePrintImage(imageUrl) {
+            const source = String(imageUrl || "").trim();
+            if (!source || source.startsWith("data:")) return source || IMAGE_PLACEHOLDER;
+
+            if (printImageCache.has(source)) return printImageCache.get(source);
+
+            const scriptUrl = localStorage.getItem('loop_script_url');
+            const fileId = extractDriveFileId(source);
+            if (!scriptUrl || !fileId) return source;
+
+            try {
+                const response = await fetch(`${scriptUrl}${scriptUrl.includes("?") ? "&" : "?"}action=image&id=${encodeURIComponent(fileId)}&_=${Date.now()}`, {
+                    cache: "no-store"
+                });
+                if (!response.ok) throw new Error(`Falha HTTP ${response.status}`);
+
+                const result = await response.json();
+                if (result.status !== "success" || !result.data) {
+                    throw new Error(result.message || "Falha ao converter a foto para o PDF.");
+                }
+
+                printImageCache.set(source, result.data);
+                return result.data;
+            } catch (error) {
+                console.warn("Não foi possível converter a foto para o PDF, usando o link direto:", error);
+                return source;
+            }
+        }
+
         function buildImageName(code) {
             const safeCode = String(code || "produto")
                 .normalize("NFD")
@@ -1823,11 +1871,14 @@
             lucide.createIcons();
         }
 
-        function generatePDF() {
+        async function generatePDF() {
             if (cart.length === 0) {
                 showToast("Adicione produtos antes de gerar o PDF!");
                 return;
             }
+
+            showToast("Preparando fotos para a proposta...");
+            const printImages = await Promise.all(cart.map(item => resolvePrintImage(item.image)));
 
             const clientName = document.getElementById('client-name').value.trim() || "Consumidor Final";
             const clientMetragem = document.getElementById('client-metragem').value.trim() || "Não informada";
@@ -1857,10 +1908,10 @@
             pdfTemplate.style.padding = "24px 36px 24px 36px";
 
             const tbody = document.getElementById('pdf-items-body');
-            tbody.innerHTML = cart.map(item => {
+            tbody.innerHTML = cart.map((item, index) => {
                 const subTotalItem = item.price * item.quantity;
                 const totalItemComDesconto = subTotalItem - (subTotalItem * (item.discountItem / 100));
-                
+
                 const unit = item.unit || 'un';
                 const formattedQty = formatNumber(item.quantity);
                 const unitLabel = unit === 'm²' ? 'm²' : unit.toUpperCase();
@@ -1872,7 +1923,7 @@
                             ${formattedQty} <span style="font-size: 9px; color: #4b5563 !important; font-weight: 600;">${unitLabel}</span>
                         </td>
                         <td style="padding: 2px 4px; text-align: center;">
-                            <img src="${getProductImageUrl(item.image)}" onerror="this.onerror=null;this.src='${IMAGE_PLACEHOLDER}'" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block;">
+                            <img src="${printImages[index] || getProductImageUrl(item.image)}" onerror="this.onerror=null;this.src='${IMAGE_PLACEHOLDER}'" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; display: inline-block;">
                         </td>
                         <td style="padding: 4px; text-align: left; max-width: 250px; word-wrap: break-word;">
                             <div style="font-weight: bold; font-size: 11px; color: #111827 !important;">${item.name}</div>

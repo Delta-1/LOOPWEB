@@ -19,11 +19,15 @@ const HEADER_ALIASES = Object.freeze({
 function doGet(e) {
   try {
     const action = String((e && e.parameter && e.parameter.action) || "read").toLowerCase();
-    if (action !== "read") {
-      return jsonResponse_({ status: "error", message: "Ação GET não suportada." });
+
+    if (action === "read") {
+      return jsonResponse_({ status: "success", data: readProducts_() });
+    }
+    if (action === "image") {
+      return jsonResponse_({ status: "success", data: getImageDataUri_(e && e.parameter && e.parameter.id) });
     }
 
-    return jsonResponse_({ status: "success", data: readProducts_() });
+    return jsonResponse_({ status: "error", message: "Ação GET não suportada." });
   } catch (error) {
     return errorResponse_(error);
   }
@@ -165,6 +169,19 @@ function saveProductImage_(payload) {
   // O ID muda a cada substituição; assim o navegador nunca reaproveita
   // silenciosamente a foto antiga pelo cache.
   return `https://drive.google.com/thumbnail?id=${file.getId()}&sz=w1600`;
+}
+
+function getImageDataUri_(fileId) {
+  const id = String(fileId || "").trim();
+  if (!id) throw new Error("ID da imagem não informado.");
+
+  // O navegador consegue exibir a foto do Drive normalmente em uma <img>, mas o
+  // gerador de PDF (html2canvas) precisa ler os pixels via CORS para desenhá-la
+  // no canvas, e o Drive não libera isso para hotlink. Convertendo para base64
+  // aqui no servidor, a foto entra no PDF sem depender de CORS do Drive.
+  const blob = DriveApp.getFileById(id).getBlob();
+  const base64 = Utilities.base64Encode(blob.getBytes());
+  return `data:${blob.getContentType()};base64,${base64}`;
 }
 
 function getProductSheet_() {
